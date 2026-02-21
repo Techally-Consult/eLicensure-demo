@@ -17,9 +17,9 @@ Defined in `app/routeTree.tsx` (manual tree); root layout is AppLayout; `applica
 
 ## Data & State
 
-- **Mock API (async):** `listApplications()`, `getApplication(id)`, `listFacilities()` – simulate network; wire to TanStack Query.
-- **Query hooks:** `useApplications()`, `useApplication(id)`, `useFacilities()`.
-- **Wizard state (local):** In `ApplicationWizardPage`: `licenseType`, `applicant`, `facility`, `services`, `staffing`, `infrastructure`, `typeSpecific`. Use `useState` or `useReducer`; on Submit, push new application into in-memory list (demo only).
+- **Mock API (async):** Implemented in `app/data/mockApi.ts`. `listApplications()`, `getApplication(id)`, `listFacilities()` with small delay; in-memory stores; `submitApplication(application)` for wizard submit.
+- **Query hooks:** `useApplications()`, `useApplication(id)`, `useFacilities()` in `app/hooks/`, wired to TanStack Query.
+- **Wizard state (local):** To be in `ApplicationWizardPage`: `licenseType`, `applicant`, `facility`, `services`, `staffing`, `infrastructure`, `typeSpecific`. On Submit, call `submitApplication()` and invalidate applications query.
 
 ## Mock Data Shapes
 

@@ -2,21 +2,18 @@
 
 ## Current Focus
 
-- **Router:** TanStack Router adopted and migrated. Layout (AppLayout/AppShell) and placeholder pages (Dashboard, Applications list, Detail, Apply) are in place. Next: mock API + hooks, then full wizard (steps 0–7).
+- **Data layer:** Mock API and query hooks are in place; Dashboard, Applications list, and Application detail are wired to data. Next: full wizard (steps 0–7) with local state and mock submit.
 
 ## Recent Changes
 
-- Documented TanStack Router decision in techContext and activeContext.
-- Migrated to TanStack Router: new route tree (`app/routeTree.tsx`), `app/main.tsx` with RouterProvider + QueryClientProvider, AppLayout with nav, placeholder pages; removed React Router and related config.
-- TanStack Query added and provided in main.tsx. shadcn not yet initialized (run `pnpm dlx shadcn@latest init` when needed).
+- **Mock API + hooks:** Types in `app/types/` (Application, Facility); in-memory store and async API in `app/data/mockApi.ts` (listApplications, getApplication, listFacilities, submitApplication); hooks in `app/hooks/` (useApplications, useApplication, useFacilities). Shared StatusBadge in `app/components/StatusBadge.tsx`.
+- Dashboard, Applications list, and Application detail pages now use the hooks and display seed data (summary counts, table with View link, detail summary).
 
 ## Next Steps
 
-1. **Mock API + query hooks (recommended next):** Define types and in-memory store; implement listApplications(), getApplication(id), listFacilities(); add useApplications(), useApplication(id), useFacilities() with TanStack Query. Enables wiring Dashboard and Applications list to real data.
-2. **Wire Dashboard & Applications list:** Use hooks in pages; add ApplicationsTable with columns, StatusBadge; Dashboard summary counts from data.
-3. **Application detail:** DetailHeader, tabs (Summary / Form / Timeline), Timeline.
-4. **Wizard (steps 0–7):** Full flow with local state; mock submit that pushes to in-memory store.
-5. **shadcn (optional):** Run `pnpm dlx shadcn@latest init` when adding Form/Tabs/Button components.
+1. **Wizard (steps 0–7):** License type → applicant → facility → services → staffing → infrastructure → type-specific → review & submit; local state; submit calls submitApplication and invalidates applications query.
+2. **Application detail:** Add tabs (Summary / Form / Timeline) and Timeline component.
+3. **shadcn (optional):** Run `pnpm dlx shadcn@latest init` when adding Form/Tabs components for wizard.
 
 ## Active Decisions / Considerations
 

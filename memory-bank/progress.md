@@ -3,25 +3,24 @@
 ## What Works
 
 - **Stack:** TanStack Router, TanStack Query, React 19, Tailwind 4, Vite 7, TypeScript.
-- **Routing:** Route tree: `/` (Dashboard), `/applications` (list), `/applications/$id` (detail), `/apply` (wizard). `app/routeTree.tsx` + `app/main.tsx` with RouterProvider and QueryClientProvider.
-- **Layout:** AppLayout with top navbar (eLicensure title, “Demo” badge, avatar placeholder), side nav (Dashboard, Applications, New Application, Settings placeholder), main outlet.
-- **Pages (placeholders):** DashboardPage (summary cards 0/0/0, “Start New Application” CTA), ApplicationsListPage, ApplicationDetailPage (shows id), ApplicationWizardPage.
+- **Routing:** Route tree and layout as above; Dashboard, Applications list, Application detail, Apply (wizard placeholder).
+- **Data layer:** Types in `app/types/application.ts` and `app/types/facility.ts`. Mock API in `app/data/mockApi.ts`: listApplications(), getApplication(id), listFacilities(), submitApplication(); seed data (3 applications, 2 facilities).
+- **Query hooks:** useApplications(), useApplication(id), useFacilities() in `app/hooks/`.
+- **Dashboard:** Summary cards (in progress / submitted / approved) from data; recent applications list with View link; “Start New Application” CTA.
+- **Applications list:** Table (ID, facility name, license type, status, last updated), StatusBadge, View → detail.
+- **Application detail:** Header (ID, status badge, license type), Summary section (facility, last updated, applicant); uses useApplication(id).
+- **Shared:** StatusBadge in `app/components/StatusBadge.tsx`.
 - **Scripts:** `pnpm run dev`, `pnpm run build`, `pnpm run typecheck` succeed.
-- **App structure:** `app/main.tsx` (entry), `app/routeTree.tsx` (routes), `app/layouts/AppLayout.tsx`, `app/pages/*.tsx`, `app/app.css`.
 
 ## What’s Left to Build
 
-- [ ] **Dashboard:** Wire SummaryCard counts and ApplicationsTable to mock data.
-- [ ] **Applications list:** Table with columns (ID, facility name, license type, status, last updated), StatusBadge, View → detail.
-- [ ] **Application detail:** DetailHeader, tabs (Summary / Form / Timeline), Timeline.
-- [ ] **Mock data layer:** listApplications(), getApplication(id), listFacilities(); mock application and facility shapes.
-- [ ] **Query hooks:** useApplications(), useApplication(id), useFacilities() using TanStack Query.
-- [ ] **Wizard (`/apply`):** Steps 0–7 in full; local state; submit adds to mock list and shows confirmation.
-- [ ] **shadcn:** Run `pnpm dlx shadcn@latest init` and add components (Form, Button, Tabs, etc.) as needed.
+- [ ] **Wizard (`/apply`):** Steps 0–7 in full; local state; submit calls submitApplication and invalidates applications query; optional toast on success.
+- [ ] **Application detail:** Tabs (Summary / Form / Timeline), Timeline component.
+- [ ] **shadcn:** Run `pnpm dlx shadcn@latest init` and add components as needed.
 
 ## Current Status
 
-- **Phase:** Layout and routing done; placeholder pages in place. Next: mock API + hooks, then list/detail wiring, then full wizard.
+- **Phase:** Mock API + hooks done; Dashboard, list, and detail wired. Next: full wizard (steps 0–7).
 
 ## Known Issues
 
