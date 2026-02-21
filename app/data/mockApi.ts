@@ -11,6 +11,10 @@ const applicationsStore: Application[] = [
     lastUpdated: "2025-02-18T10:00:00Z",
     applicant: { name: "Abebe Kebede", email: "abebe@example.com", role: "owner" },
     facility: { name: "Sunrise Health Center", type: "Health Center", region: "Addis Ababa" },
+    timeline: [
+      { date: "2025-02-17T09:00:00Z", label: "Created" },
+      { date: "2025-02-18T10:00:00Z", label: "Submitted" },
+    ],
   },
   {
     id: "APP-002",
@@ -20,6 +24,11 @@ const applicationsStore: Application[] = [
     lastUpdated: "2025-02-19T14:30:00Z",
     applicant: { name: "Tigist Hailu", email: "tigist@example.com", role: "representative" },
     facility: { name: "Mercy General Clinic", type: "Clinic", licenseNumber: "LIC-2019-042" },
+    timeline: [
+      { date: "2025-02-18T08:00:00Z", label: "Created" },
+      { date: "2025-02-18T12:00:00Z", label: "Submitted" },
+      { date: "2025-02-19T14:30:00Z", label: "Under Review" },
+    ],
   },
   {
     id: "APP-003",
@@ -29,6 +38,12 @@ const applicationsStore: Application[] = [
     lastUpdated: "2025-02-15T09:00:00Z",
     applicant: { name: "Dawit Bekele", email: "dawit@example.com", role: "owner" },
     facility: { name: "Hope Medical Center", type: "Hospital", licenseNumber: "LIC-2020-101" },
+    timeline: [
+      { date: "2025-02-12T10:00:00Z", label: "Created" },
+      { date: "2025-02-13T11:00:00Z", label: "Submitted" },
+      { date: "2025-02-14T14:00:00Z", label: "Under Review" },
+      { date: "2025-02-15T09:00:00Z", label: "Approved" },
+    ],
   },
 ];
 
@@ -83,6 +98,10 @@ export function submitApplication(
     id,
     lastUpdated,
     status,
+    timeline: [
+      { date: lastUpdated, label: "Created" },
+      { date: lastUpdated, label: "Submitted" },
+    ],
   };
   applicationsStore.push(created);
   return created;

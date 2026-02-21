@@ -33,7 +33,7 @@ Defined in `app/routeTree.tsx` (manual tree); root layout is AppLayout; `applica
 | Layout | AppShell, NavLink list |
 | Dashboard | SummaryCard, ApplicationsTable, “Start New Application” CTA |
 | Applications list | ApplicationsTable, StatusBadge, row “View” action |
-| Application detail | DetailHeader, Tabs (Summary / Form / Timeline), Timeline |
+| Application detail | DetailHeader, Tabs (Summary / Form / Timeline), Timeline (status history; `app/components/Timeline.tsx`) |
 | Wizard | Form/FormField/FormItem/FormLabel/FormControl/FormMessage, RadioGroup, Input, Textarea, Select, Checkbox, Stepper (or step indicator), Button |
 
 ## Design Patterns

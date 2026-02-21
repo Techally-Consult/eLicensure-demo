@@ -36,6 +36,12 @@ export interface ServiceItem {
   bedCapacity?: number;
 }
 
+/** Timeline event for status history */
+export interface TimelineEvent {
+  date: string; // ISO date string
+  label: string;
+}
+
 /** Application as stored and returned by mock API */
 export interface Application {
   id: string;
@@ -46,4 +52,5 @@ export interface Application {
   applicant?: ApplicantInfo;
   facility?: FacilityInfo;
   services?: ServiceItem[];
+  timeline?: TimelineEvent[];
 }

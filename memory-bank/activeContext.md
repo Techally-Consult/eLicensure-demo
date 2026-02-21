@@ -2,16 +2,15 @@
 
 ## Current Focus
 
-- **Wizard:** Full Application Wizard (steps 0–7) is implemented. Next: Application detail tabs (Summary / Form / Timeline) and Timeline, or shadcn for richer form components.
+- **Detail tabs:** Application detail page now has Summary / Form / Timeline tabs and Timeline component. Next: optional polish or shadcn.
 
 ## Recent Changes
 
-- **Application Wizard (`/apply`):** Single-page wizard with local state (WizardState). Steps: 0 License type (radio), 1 Applicant (name, ID, phone, email, role, auth letter ref), 2 Facility (new: name/type/ownership/region/woreda; renewal/additional: facility dropdown from useFacilities()), 3 Services & capacity (checkboxes + level/beds per service, total beds), 4 Staffing (facility head + addable staff rows), 5 Infrastructure (layout description + floor plan placeholder), 6 Type-specific (new: start date, construction status, ready for inspection; renewal: license dates, changes, inspection; additional: current services, new services table, justification, impact), 7 Review & submit. Submit builds payload, calls submitApplication(), invalidates applications query, shows success with links to list and new application.
+- **Application detail:** Tabs (Summary, Form, Timeline) with local tab state. Summary tab: facility, last updated, applicant, services. Form tab: read-only Applicant (name, ID, phone, email, role), Facility (name, type, ownership, region, woreda, license number), Services list. Timeline tab: Timeline component with status history (Created, Submitted, status changes). TimelineEvent type and optional `timeline` on Application; seed data and submitApplication() set timeline for new applications. `app/components/Timeline.tsx` renders vertical list with date and label.
 
 ## Next Steps
 
-1. **Application detail:** Add tabs (Summary / Form / Timeline) and Timeline component.
-2. **shadcn (optional):** Run `pnpm dlx shadcn@latest init` when adding Form/Tabs components.
+1. **Optional:** shadcn init for richer form/tab components; or polish (e.g. empty states, validation messages).
 
 ## Active Decisions / Considerations
 
