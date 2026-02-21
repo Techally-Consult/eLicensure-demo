@@ -1,19 +1,19 @@
 # System Patterns
 
-## Route Tree (PRD)
+## Route Tree (Implemented)
 
 - `/` → Dashboard
-- `/applications` → Application list
+- `/applications` → Application list (index under `applications` layout)
 - `/applications/$id` → Application detail
 - `/apply` → Application wizard
 
-Route metadata (e.g. titles) via static route data where useful.
+Defined in `app/routeTree.tsx` (manual tree); root layout is AppLayout; `applications` has a layout route that renders `<Outlet />` for list and detail.
 
 ## Layout Architecture
 
-- **AppLayout:** Wraps all pages; provides top navbar (app title, “Demo” badge, user avatar placeholder) and side nav (Dashboard, Applications, New Application, Settings).
-- **AppShell:** Flex layout: sidebar + main content area that renders current route outlet.
-- **NavLink:** Router-aware links for side nav.
+- **AppLayout:** Implemented in `app/layouts/AppLayout.tsx`. Top navbar (eLicensure title, “Demo” badge, avatar placeholder), side nav with TanStack Router `Link` (Dashboard, Applications, New Application, Settings placeholder), main content area with `<Outlet />`.
+- **AppShell:** Same as AppLayout in this codebase (single layout component).
+- **NavLink:** Using `Link` from `@tanstack/react-router` with `activeProps` for active styling.
 
 ## Data & State
 

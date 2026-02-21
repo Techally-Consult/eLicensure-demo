@@ -2,20 +2,23 @@
 
 ## Current Focus
 
-- Memory bank has been **initialized** from `docs/eLicensure-Core-PRD.md`.
-- No implementation of PRD screens or flows has started yet beyond the initial React Router template.
+- **Router:** TanStack Router adopted and migrated. Layout (AppLayout/AppShell) and placeholder pages (Dashboard, Applications list, Detail, Apply) are in place. Next: mock API + hooks, then full wizard (steps 0–7).
 
 ## Recent Changes
 
-- Created memory-bank core files: projectbrief, productContext, systemPatterns, techContext, activeContext, progress.
+- Documented TanStack Router decision in techContext and activeContext.
+- Migrated to TanStack Router: new route tree (`app/routeTree.tsx`), `app/main.tsx` with RouterProvider + QueryClientProvider, AppLayout with nav, placeholder pages; removed React Router and related config.
+- TanStack Query added and provided in main.tsx. shadcn not yet initialized (run `pnpm dlx shadcn@latest init` when needed).
 
 ## Next Steps
 
-1. **Decide routing:** Implement PRD route tree and layout with **React Router 7** (current) or plan migration to **TanStack Router** (PRD). Document choice in techContext/activeContext.
-2. **Add dependencies** (if aligning with PRD): TanStack Query, shadcn (and any required setup).
-3. **Implement in order:** AppLayout/AppShell + nav → Dashboard → Applications list → Application detail → Mock API + hooks → Application wizard (steps 0–7).
+1. **Mock API + query hooks (recommended next):** Define types and in-memory store; implement listApplications(), getApplication(id), listFacilities(); add useApplications(), useApplication(id), useFacilities() with TanStack Query. Enables wiring Dashboard and Applications list to real data.
+2. **Wire Dashboard & Applications list:** Use hooks in pages; add ApplicationsTable with columns, StatusBadge; Dashboard summary counts from data.
+3. **Application detail:** DetailHeader, tabs (Summary / Form / Timeline), Timeline.
+4. **Wizard (steps 0–7):** Full flow with local state; mock submit that pushes to in-memory store.
+5. **shadcn (optional):** Run `pnpm dlx shadcn@latest init` when adding Form/Tabs/Button components.
 
 ## Active Decisions / Considerations
 
-- **Router:** PRD says TanStack Router; repo uses React Router 7. Pending: keep React Router and mirror PRD routes, or migrate to TanStack Router.
-- **Mock persistence:** Wizard submit “pushes” into in-memory list; for demo, may need a simple in-memory store (e.g. module-level array or React state/context) shared with list/dashboard.
+- **Router:** TanStack Router (decided and implemented).
+- **Mock persistence:** Wizard submit pushes into in-memory store shared with list/dashboard (mock API module).

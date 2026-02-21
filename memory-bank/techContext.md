@@ -6,18 +6,18 @@
 - **Data:** TanStack Query (mock API, hooks).
 - **UI:** shadcn + Tailwind (forms, inputs, tabs, buttons, etc.).
 
-## Current Repo (As of Memory Bank Init)
+## Current Repo
 
-- **Router:** React Router 7 (`react-router`, `@react-router/*`).
+- **Router:** TanStack Router (`@tanstack/react-router`) – migrated from React Router 7.
+- **Data:** TanStack Query (`@tanstack/react-query`) in place; mock API layer and hooks not yet implemented.
+- **UI:** Tailwind CSS 4 for layout and styling. shadcn not yet added (run `pnpm dlx shadcn@latest init` when needed).
 - **React:** 19.x.
-- **Styling:** Tailwind CSS 4 (`tailwindcss`, `@tailwindcss/vite`).
 - **Build:** Vite 7, TypeScript 5.9.
-- **Scripts:** `npm run dev`, `npm run build`, `npm run start`, `npm run typecheck` (react-router typegen + tsc).
+- **Scripts:** `pnpm run dev`, `pnpm run build`, `pnpm run typecheck` (Vite + tsc).
 
-## Gap vs PRD
+## Decision (Router)
 
-- PRD specifies **TanStack Router**; repo uses **React Router 7**. Decision: either migrate to TanStack Router or implement same route tree and flows with React Router (document in activeContext).
-- **TanStack Query** and **shadcn** are not yet in the project; to be added when implementing data and UI per PRD.
+- **Chosen:** TanStack Router (per PRD). Migration from React Router 7 completed.
 
 ## Technical Constraints
 
@@ -25,7 +25,8 @@
 - TypeScript throughout.
 - Tailwind for layout and spacing (`container`, `max-w-3xl`, `mx-auto`, `flex`, `gap-4`).
 
-## Dependencies (Current)
+## Dependencies
 
-- react, react-dom, react-router, @react-router/node, @react-router/serve, @react-router/dev, isbot.
-- tailwindcss, @tailwindcss/vite, vite, vite-tsconfig-paths, typescript, @types/*.
+- react, react-dom, @tanstack/react-router, @tanstack/react-query.
+- tailwindcss, @tailwindcss/vite, @vitejs/plugin-react, vite, vite-tsconfig-paths, typescript, @types/*.
+- shadcn/ui to be added when implementing forms/tabs (optional until wizard).

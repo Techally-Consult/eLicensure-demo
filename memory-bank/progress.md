@@ -2,26 +2,27 @@
 
 ## What Works
 
-- Repo scaffold: React Router 7, React 19, Tailwind 4, Vite 7, TypeScript.
-- Single index route → `routes/home.tsx` (welcome/home).
-- `npm run dev`, `build`, `typecheck` run successfully.
-- PRD documented in `docs/eLicensure-Core-PRD.md`; memory bank initialized from it.
+- **Stack:** TanStack Router, TanStack Query, React 19, Tailwind 4, Vite 7, TypeScript.
+- **Routing:** Route tree: `/` (Dashboard), `/applications` (list), `/applications/$id` (detail), `/apply` (wizard). `app/routeTree.tsx` + `app/main.tsx` with RouterProvider and QueryClientProvider.
+- **Layout:** AppLayout with top navbar (eLicensure title, “Demo” badge, avatar placeholder), side nav (Dashboard, Applications, New Application, Settings placeholder), main outlet.
+- **Pages (placeholders):** DashboardPage (summary cards 0/0/0, “Start New Application” CTA), ApplicationsListPage, ApplicationDetailPage (shows id), ApplicationWizardPage.
+- **Scripts:** `pnpm run dev`, `pnpm run build`, `pnpm run typecheck` succeed.
+- **App structure:** `app/main.tsx` (entry), `app/routeTree.tsx` (routes), `app/layouts/AppLayout.tsx`, `app/pages/*.tsx`, `app/app.css`.
 
 ## What’s Left to Build
 
-- [ ] **Layout:** AppLayout, AppShell, top navbar (title, “Demo” badge, avatar), side nav (Dashboard, Applications, New Application, Settings), outlet.
-- [ ] **Dashboard (`/`):** SummaryCard(s), ApplicationsTable, “Start New Application” CTA.
-- [ ] **Applications list (`/applications`):** Table (ID, facility name, license type, status, last updated), StatusBadge, View → detail.
-- [ ] **Application detail (`/applications/$id`):** DetailHeader, tabs (Summary / Form / Timeline), Timeline.
+- [ ] **Dashboard:** Wire SummaryCard counts and ApplicationsTable to mock data.
+- [ ] **Applications list:** Table with columns (ID, facility name, license type, status, last updated), StatusBadge, View → detail.
+- [ ] **Application detail:** DetailHeader, tabs (Summary / Form / Timeline), Timeline.
 - [ ] **Mock data layer:** listApplications(), getApplication(id), listFacilities(); mock application and facility shapes.
-- [ ] **Query layer:** useApplications(), useApplication(id), useFacilities() (TanStack Query or equivalent).
-- [ ] **Wizard (`/apply`):** Steps 0–7 (license type, applicant, facility, services & capacity, staffing, infrastructure, type-specific, review & submit); local state; submit adds to mock list and shows confirmation.
-- [ ] **UI library:** Add and use shadcn (or equivalent) for forms, inputs, tabs, buttons, etc., per PRD.
+- [ ] **Query hooks:** useApplications(), useApplication(id), useFacilities() using TanStack Query.
+- [ ] **Wizard (`/apply`):** Steps 0–7 in full; local state; submit adds to mock list and shows confirmation.
+- [ ] **shadcn:** Run `pnpm dlx shadcn@latest init` and add components (Form, Button, Tabs, etc.) as needed.
 
 ## Current Status
 
-- **Phase:** Pre-implementation; memory bank and PRD are the reference; routing/stack decision pending.
+- **Phase:** Layout and routing done; placeholder pages in place. Next: mock API + hooks, then list/detail wiring, then full wizard.
 
 ## Known Issues
 
-- None yet. Router choice (React Router vs TanStack Router) is an open decision, not a bug.
+- None. shadcn not yet initialized (optional; run init when adding form/tab components).
