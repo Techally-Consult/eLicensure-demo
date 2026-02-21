@@ -2,18 +2,16 @@
 
 ## Current Focus
 
-- **Data layer:** Mock API and query hooks are in place; Dashboard, Applications list, and Application detail are wired to data. Next: full wizard (steps 0–7) with local state and mock submit.
+- **Wizard:** Full Application Wizard (steps 0–7) is implemented. Next: Application detail tabs (Summary / Form / Timeline) and Timeline, or shadcn for richer form components.
 
 ## Recent Changes
 
-- **Mock API + hooks:** Types in `app/types/` (Application, Facility); in-memory store and async API in `app/data/mockApi.ts` (listApplications, getApplication, listFacilities, submitApplication); hooks in `app/hooks/` (useApplications, useApplication, useFacilities). Shared StatusBadge in `app/components/StatusBadge.tsx`.
-- Dashboard, Applications list, and Application detail pages now use the hooks and display seed data (summary counts, table with View link, detail summary).
+- **Application Wizard (`/apply`):** Single-page wizard with local state (WizardState). Steps: 0 License type (radio), 1 Applicant (name, ID, phone, email, role, auth letter ref), 2 Facility (new: name/type/ownership/region/woreda; renewal/additional: facility dropdown from useFacilities()), 3 Services & capacity (checkboxes + level/beds per service, total beds), 4 Staffing (facility head + addable staff rows), 5 Infrastructure (layout description + floor plan placeholder), 6 Type-specific (new: start date, construction status, ready for inspection; renewal: license dates, changes, inspection; additional: current services, new services table, justification, impact), 7 Review & submit. Submit builds payload, calls submitApplication(), invalidates applications query, shows success with links to list and new application.
 
 ## Next Steps
 
-1. **Wizard (steps 0–7):** License type → applicant → facility → services → staffing → infrastructure → type-specific → review & submit; local state; submit calls submitApplication and invalidates applications query.
-2. **Application detail:** Add tabs (Summary / Form / Timeline) and Timeline component.
-3. **shadcn (optional):** Run `pnpm dlx shadcn@latest init` when adding Form/Tabs components for wizard.
+1. **Application detail:** Add tabs (Summary / Form / Timeline) and Timeline component.
+2. **shadcn (optional):** Run `pnpm dlx shadcn@latest init` when adding Form/Tabs components.
 
 ## Active Decisions / Considerations
 

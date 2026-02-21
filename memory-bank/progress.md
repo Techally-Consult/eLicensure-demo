@@ -10,17 +10,17 @@
 - **Applications list:** Table (ID, facility name, license type, status, last updated), StatusBadge, View → detail.
 - **Application detail:** Header (ID, status badge, license type), Summary section (facility, last updated, applicant); uses useApplication(id).
 - **Shared:** StatusBadge in `app/components/StatusBadge.tsx`.
+- **Application Wizard (`/apply`):** Steps 0–7 with local WizardState; step indicator; Back/Next/Submit; type-specific forms for New, Renewal, Additional service; Submit calls submitApplication, invalidates applications query, shows success and links to list/detail.
 - **Scripts:** `pnpm run dev`, `pnpm run build`, `pnpm run typecheck` succeed.
 
 ## What’s Left to Build
 
-- [ ] **Wizard (`/apply`):** Steps 0–7 in full; local state; submit calls submitApplication and invalidates applications query; optional toast on success.
 - [ ] **Application detail:** Tabs (Summary / Form / Timeline), Timeline component.
 - [ ] **shadcn:** Run `pnpm dlx shadcn@latest init` and add components as needed.
 
 ## Current Status
 
-- **Phase:** Mock API + hooks done; Dashboard, list, and detail wired. Next: full wizard (steps 0–7).
+- **Phase:** Wizard (steps 0–7) implemented; submit works and list/dashboard update. Next: detail tabs and Timeline, or polish/shadcn.
 
 ## Known Issues
 
