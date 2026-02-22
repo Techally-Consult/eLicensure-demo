@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useApplications } from "~/hooks/useApplications";
 import { StatusBadge } from "~/components/StatusBadge";
+import { Button } from "~/components/ui/button";
 
 function formatDate(iso: string) {
   try {
@@ -92,13 +93,11 @@ export function ApplicationsListPage() {
                     {formatDate(app.lastUpdated)}
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 text-right text-sm">
-                    <Link
-                      to="/applications/$id"
-                      params={{ id: app.id }}
-                      className="text-blue-600 hover:underline dark:text-blue-400"
-                    >
-                      View
-                    </Link>
+                    <Button variant="link" size="sm" asChild>
+                      <Link to="/applications/$id" params={{ id: app.id }}>
+                        View
+                      </Link>
+                    </Button>
                   </td>
                 </tr>
               ))}

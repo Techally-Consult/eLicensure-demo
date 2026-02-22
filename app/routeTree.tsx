@@ -37,11 +37,28 @@ const applicationDetailRoute = createRoute({
   component: ApplicationDetailPage,
 });
 
-const applyRoute = createRoute({
+const applyLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "apply",
+  component: () => <Outlet />,
+});
+
+const applyIndexRoute = createRoute({
+  getParentRoute: () => applyLayoutRoute,
+  path: "/",
   component: ApplicationWizardPage,
 });
+
+const applyIdRoute = createRoute({
+  getParentRoute: () => applyLayoutRoute,
+  path: "$id",
+  component: ApplicationWizardPage,
+});
+
+const applyLayoutWithChildren = applyLayoutRoute.addChildren([
+  applyIndexRoute,
+  applyIdRoute,
+]);
 
 const applicationsRouteWithChildren = applicationsRoute.addChildren([
   applicationsIndexRoute,
@@ -51,5 +68,5 @@ const applicationsRouteWithChildren = applicationsRoute.addChildren([
 export const routeTree = rootRoute.addChildren([
   indexRoute,
   applicationsRouteWithChildren,
-  applyRoute,
+  applyLayoutWithChildren,
 ]);

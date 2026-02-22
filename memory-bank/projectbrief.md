@@ -14,9 +14,9 @@ eLicensure (facility licensing demo) – static web app prototype.
 
 ## Scope (Source of Truth)
 
-- **Screens:** Global layout (AppLayout/AppShell), Dashboard (`/`), Application List (`/applications`), Application Detail (`/applications/$id`), New Application Wizard (`/apply`).
-- **Wizard:** Single multi-step flow for all three license types (Steps 0–7: license type → applicant → facility → services & capacity → staffing → infrastructure → type-specific → review & submit).
-- **Data:** Mock applications and mock facilities; async mock API layer; TanStack Query hooks; wizard state kept local in wizard page.
+- **Screens:** Global layout (AppLayout/AppShell), Dashboard (`/`), Application List (`/applications`), Application Detail (`/applications/$id`), New Application Wizard (`/apply`), Edit Application Wizard (`/apply/$id`).
+- **Wizard:** Single multi-step flow for all three license types (Steps 0–7: license type → applicant → facility → services & capacity → staffing → infrastructure → type-specific → review & submit). Supports both create (`/apply`) and edit (`/apply/$id`); edit loads application into wizard state and saves via `updateApplication`.
+- **Data:** Mock applications (12 seed, full-form) and mock facilities; async mock API layer (`listApplications`, `getApplication`, `submitApplication`, `updateApplication`, `updateApplicationStatus`); TanStack Query hooks; wizard state kept local in wizard page; detail supports status change (updates store + timeline).
 - **UI:** shadcn form patterns, Tailwind layout/spacing, status pills, summary cards, tables, timeline, stepper.
 
 ## Out of Scope (Prototype)

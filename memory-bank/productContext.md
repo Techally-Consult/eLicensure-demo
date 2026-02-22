@@ -13,14 +13,16 @@
 
 ## How It Should Work
 
-1. **Entry:** User lands on Dashboard with summary cards (in progress, submitted, approved) and recent applications; “Start New Application” leads to `/apply`.
+1. **Entry:** User lands on Dashboard with summary cards (in progress, submitted, approved), charts (by status, over time), and recent applications; “Start New Application” leads to `/apply`.
 2. **List:** `/applications` shows all applications with ID, facility name, license type, status, last updated; “View” goes to detail.
-3. **Detail:** `/applications/$id` shows read-only application with Summary / Form / Timeline tabs.
-4. **Wizard:** `/apply` – choose license type → fill applicant → facility (new or select existing) → services & capacity → staffing → infrastructure → type-specific step → review & submit. Submit (mock) adds application to list and shows confirmation.
+3. **Detail:** `/applications/$id` shows application with Summary / Form / Timeline tabs; **Edit** button links to `/apply/$id`; **status dropdown** (Draft, Submitted, Under Review, Approved, Rejected) updates application and timeline. Form tab shows full form data (applicant, facility, services, capacity & staffing, infrastructure, type-specific).
+4. **Wizard:** `/apply` (new) or `/apply/$id` (edit). Edit pre-fills wizard from application. Steps: license type → applicant → facility (new or select existing) → services & capacity → staffing → infrastructure → type-specific → review & submit. Submit creates (new) or saves changes (edit); success screen links to list and detail.
 
 ## User Experience Goals
 
 - Clear step-by-step wizard with Next/Back and disabled Next until step is valid.
 - Consistent status pills (Draft, Submitted, Under Review, Approved, Rejected).
 - Pre-filled facility data when renewal or additional service + existing facility selected.
+- Edit from detail pre-fills wizard with full application data; save updates in-memory store.
+- Status change on detail updates application and timeline (demo: any transition allowed).
 - Optional toast/alert on “Application submitted (mock)”.

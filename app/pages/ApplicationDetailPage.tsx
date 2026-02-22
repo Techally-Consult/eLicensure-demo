@@ -1,16 +1,46 @@
 import { useState } from "react";
-import { useParams } from "@tanstack/react-router";
+import { Link, useParams } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { useApplication } from "~/hooks/useApplication";
+import { applicationQueryKey } from "~/hooks/useApplication";
+import { applicationsQueryKey } from "~/hooks/useApplications";
+import { updateApplicationStatus } from "~/data/mockApi";
 import { StatusBadge } from "~/components/StatusBadge";
 import { Timeline } from "~/components/Timeline";
-import type { TimelineEvent } from "~/types/application";
+import { Button } from "~/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "~/components/ui/select";
+import type { ApplicationStatus, TimelineEvent } from "~/types/application";
 
 type DetailTab = "summary" | "form" | "timeline";
+
+const STATUS_OPTIONS: ApplicationStatus[] = [
+  "Draft",
+  "Submitted",
+  "Under Review",
+  "Approved",
+  "Rejected",
+];
 
 export function ApplicationDetailPage() {
   const { id } = useParams({ strict: false });
   const { data: application, isLoading, error } = useApplication(id ?? undefined);
   const [activeTab, setActiveTab] = useState<DetailTab>("summary");
+  const queryClient = useQueryClient();
+
+  const handleStatusChange = (newStatus: ApplicationStatus) => {
+    if (!id) return;
+    updateApplicationStatus(id, newStatus);
+    queryClient.invalidateQueries({ queryKey: applicationsQueryKey });
+    queryClient.invalidateQueries({ queryKey: applicationQueryKey(id) });
+  };
 
   if (isLoading || !id) {
     return (
@@ -46,69 +76,73 @@ export function ApplicationDetailPage() {
           { date: application.lastUpdated, label: application.status },
         ];
 
-  const tabs: { id: DetailTab; label: string }[] = [
-    { id: "summary", label: "Summary" },
-    { id: "form", label: "Form" },
-    { id: "timeline", label: "Timeline" },
-  ];
-
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
+        <h1 className="text-2xl font-semibold text-foreground">
           {application.id}
         </h1>
         <StatusBadge status={application.status} />
-        <span className="text-sm text-gray-500 dark:text-gray-400">
+        <span className="text-sm text-muted-foreground">
           {application.licenseType.replace("_", " ")}
         </span>
+        {id && (
+          <Button variant="outline" size="sm" asChild className="ml-auto">
+            <Link to="/apply/$id" params={{ id }}>Edit</Link>
+          </Button>
+        )}
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Status:</span>
+          <Select
+            value={application.status}
+            onValueChange={(v) => handleStatusChange(v as ApplicationStatus)}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {STATUS_OPTIONS.map((s) => (
+                <SelectItem key={s} value={s}>
+                  {s}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
-      <div className="border-b border-gray-200 dark:border-gray-800">
-        <nav className="flex gap-4" aria-label="Tabs">
-          {tabs.map(({ id: tabId, label }) => (
-            <button
-              key={tabId}
-              type="button"
-              onClick={() => setActiveTab(tabId)}
-              className={`border-b-2 px-1 py-3 text-sm font-medium transition-colors ${
-                activeTab === tabId
-                  ? "border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400"
-                  : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:border-gray-600 dark:hover:text-gray-300"
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </nav>
-      </div>
-
-      <div className="rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-950">
-        {activeTab === "summary" && (
-          <div className="space-y-4">
-            <h2 className="text-sm font-medium text-gray-900 dark:text-white">
-              Summary
-            </h2>
-            <dl className="space-y-2 text-sm">
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as DetailTab)}>
+        <TabsList className="grid w-full max-w-md grid-cols-3">
+          <TabsTrigger value="summary">Summary</TabsTrigger>
+          <TabsTrigger value="form">Form</TabsTrigger>
+          <TabsTrigger value="timeline">Timeline</TabsTrigger>
+        </TabsList>
+        <Card className="mt-4">
+          <TabsContent value="summary" className="mt-0">
+            <CardHeader>
+              <CardTitle className="text-base">Summary</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <dl className="space-y-2 text-sm">
               <div>
-                <dt className="text-gray-500 dark:text-gray-400">Facility</dt>
-                <dd className="font-medium text-gray-900 dark:text-white">
+                <dt className="text-muted-foreground">Facility</dt>
+                <dd className="font-medium text-foreground">
                   {application.facilityName}
                 </dd>
               </div>
               <div>
-                <dt className="text-gray-500 dark:text-gray-400">Last updated</dt>
-                <dd className="font-medium text-gray-900 dark:text-white">
+                <dt className="text-muted-foreground">Last updated</dt>
+                <dd className="font-medium text-foreground">
                   {new Date(application.lastUpdated).toLocaleString()}
                 </dd>
               </div>
               {application.applicant?.name && (
                 <div>
-                  <dt className="text-gray-500 dark:text-gray-400">Applicant</dt>
-                  <dd className="font-medium text-gray-900 dark:text-white">
+                  <dt className="text-muted-foreground">Applicant</dt>
+                  <dd className="font-medium text-foreground">
                     {application.applicant.name}
                     {application.applicant.email && (
-                      <span className="font-normal text-gray-500 dark:text-gray-400">
+                      <span className="font-normal text-muted-foreground">
                         {" "}
                         ({application.applicant.email})
                       </span>
@@ -118,8 +152,8 @@ export function ApplicationDetailPage() {
               )}
               {application.services && application.services.length > 0 && (
                 <div>
-                  <dt className="text-gray-500 dark:text-gray-400">Services</dt>
-                  <dd className="font-medium text-gray-900 dark:text-white">
+                  <dt className="text-muted-foreground">Services</dt>
+                  <dd className="font-medium text-foreground">
                     {application.services
                       .map(
                         (s) =>
@@ -129,16 +163,15 @@ export function ApplicationDetailPage() {
                   </dd>
                 </div>
               )}
-            </dl>
-          </div>
-        )}
-
-        {activeTab === "form" && (
-          <div className="space-y-6">
-            <h2 className="text-sm font-medium text-gray-900 dark:text-white">
-              Form (read-only)
-            </h2>
-
+              </dl>
+            </CardContent>
+          </TabsContent>
+          <TabsContent value="form" className="mt-0">
+            <CardHeader>
+              <CardTitle className="text-base">Form (read-only)</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="space-y-6">
             {application.applicant && (
               <section>
                 <h3 className="mb-2 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
@@ -188,6 +221,14 @@ export function ApplicationDetailPage() {
                       <dt className="text-gray-500 dark:text-gray-400">Role</dt>
                       <dd className="text-gray-900 dark:text-white">
                         {application.applicant.role}
+                      </dd>
+                    </div>
+                  )}
+                  {application.applicant.authLetterRef && (
+                    <div>
+                      <dt className="text-gray-500 dark:text-gray-400">Authorization letter reference</dt>
+                      <dd className="text-gray-900 dark:text-white">
+                        {application.applicant.authLetterRef}
                       </dd>
                     </div>
                   )}
@@ -277,24 +318,195 @@ export function ApplicationDetailPage() {
               </section>
             )}
 
+            {(application.totalBeds || application.staffingHead?.name) && (
+              <section>
+                <h3 className="mb-2 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                  Capacity &amp; Staffing
+                </h3>
+                <dl className="grid gap-x-4 gap-y-1 text-sm sm:grid-cols-2">
+                  {application.totalBeds && (
+                    <div>
+                      <dt className="text-gray-500 dark:text-gray-400">Total beds</dt>
+                      <dd className="text-gray-900 dark:text-white">{application.totalBeds}</dd>
+                    </div>
+                  )}
+                  {application.staffingHead?.name && (
+                    <>
+                      <div>
+                        <dt className="text-gray-500 dark:text-gray-400">Facility head</dt>
+                        <dd className="text-gray-900 dark:text-white">{application.staffingHead.name}</dd>
+                      </div>
+                      {application.staffingHead.qualification && (
+                        <div>
+                          <dt className="text-gray-500 dark:text-gray-400">Qualification</dt>
+                          <dd className="text-gray-900 dark:text-white">{application.staffingHead.qualification}</dd>
+                        </div>
+                      )}
+                      {application.staffingHead.licenseNumber && (
+                        <div>
+                          <dt className="text-gray-500 dark:text-gray-400">License number</dt>
+                          <dd className="text-gray-900 dark:text-white">{application.staffingHead.licenseNumber}</dd>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </dl>
+                {application.staffRows && application.staffRows.length > 0 && (
+                  <div className="mt-2">
+                    <dt className="mb-1 text-gray-500 dark:text-gray-400">Staff</dt>
+                    <ul className="space-y-1 text-sm">
+                      {application.staffRows.map((r, i) => (
+                        <li key={i} className="text-gray-900 dark:text-white">
+                          {r.name} — {r.cadre}{r.license ? ` (${r.license})` : ""}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </section>
+            )}
+
+            {application.infrastructureDescription && (
+              <section>
+                <h3 className="mb-2 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                  Infrastructure
+                </h3>
+                <p className="text-sm text-gray-900 dark:text-white whitespace-pre-wrap">
+                  {application.infrastructureDescription}
+                </p>
+              </section>
+            )}
+
+            {(application.typeSpecific?.new || application.typeSpecific?.renewal || application.typeSpecific?.additional) && (
+              <section>
+                <h3 className="mb-2 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                  Type-specific
+                </h3>
+                <dl className="grid gap-x-4 gap-y-1 text-sm sm:grid-cols-2">
+                  {application.typeSpecific?.new && (
+                    <>
+                      {application.typeSpecific.new.startDate && (
+                        <div>
+                          <dt className="text-gray-500 dark:text-gray-400">Intended start date</dt>
+                          <dd className="text-gray-900 dark:text-white">{application.typeSpecific.new.startDate}</dd>
+                        </div>
+                      )}
+                      {application.typeSpecific.new.constructionStatus && (
+                        <div>
+                          <dt className="text-gray-500 dark:text-gray-400">Construction status</dt>
+                          <dd className="text-gray-900 dark:text-white">{application.typeSpecific.new.constructionStatus}</dd>
+                        </div>
+                      )}
+                      {application.typeSpecific.new.readyForInspection != null && (
+                        <div>
+                          <dt className="text-gray-500 dark:text-gray-400">Ready for inspection</dt>
+                          <dd className="text-gray-900 dark:text-white">{application.typeSpecific.new.readyForInspection ? "Yes" : "No"}</dd>
+                        </div>
+                      )}
+                    </>
+                  )}
+                  {application.typeSpecific?.renewal && (
+                    <>
+                      {application.typeSpecific.renewal.licenseNumber && (
+                        <div>
+                          <dt className="text-gray-500 dark:text-gray-400">License number</dt>
+                          <dd className="text-gray-900 dark:text-white">{application.typeSpecific.renewal.licenseNumber}</dd>
+                        </div>
+                      )}
+                      {application.typeSpecific.renewal.issueDate && (
+                        <div>
+                          <dt className="text-gray-500 dark:text-gray-400">Issue date</dt>
+                          <dd className="text-gray-900 dark:text-white">{application.typeSpecific.renewal.issueDate}</dd>
+                        </div>
+                      )}
+                      {application.typeSpecific.renewal.expiryDate && (
+                        <div>
+                          <dt className="text-gray-500 dark:text-gray-400">Expiry date</dt>
+                          <dd className="text-gray-900 dark:text-white">{application.typeSpecific.renewal.expiryDate}</dd>
+                        </div>
+                      )}
+                      {application.typeSpecific.renewal.changes && (
+                        <div className="sm:col-span-2">
+                          <dt className="text-gray-500 dark:text-gray-400">Changes</dt>
+                          <dd className="text-gray-900 dark:text-white">{application.typeSpecific.renewal.changes}</dd>
+                        </div>
+                      )}
+                      {application.typeSpecific.renewal.lastInspection && (
+                        <div>
+                          <dt className="text-gray-500 dark:text-gray-400">Last inspection</dt>
+                          <dd className="text-gray-900 dark:text-white">{application.typeSpecific.renewal.lastInspection}</dd>
+                        </div>
+                      )}
+                      {application.typeSpecific.renewal.inspectionSummary && (
+                        <div className="sm:col-span-2">
+                          <dt className="text-gray-500 dark:text-gray-400">Inspection summary</dt>
+                          <dd className="text-gray-900 dark:text-white">{application.typeSpecific.renewal.inspectionSummary}</dd>
+                        </div>
+                      )}
+                    </>
+                  )}
+                  {application.typeSpecific?.additional && (
+                    <>
+                      {application.typeSpecific.additional.currentServices && (
+                        <div className="sm:col-span-2">
+                          <dt className="text-gray-500 dark:text-gray-400">Current services</dt>
+                          <dd className="text-gray-900 dark:text-white">{application.typeSpecific.additional.currentServices}</dd>
+                        </div>
+                      )}
+                      {application.typeSpecific.additional.newServices && application.typeSpecific.additional.newServices.length > 0 && (
+                        <div className="sm:col-span-2">
+                          <dt className="text-gray-500 dark:text-gray-400">New services</dt>
+                          <dd className="text-gray-900 dark:text-white">
+                            <ul className="list-disc pl-4 space-y-1">
+                              {application.typeSpecific.additional.newServices.map((s, i) => (
+                                <li key={i}>{s.name} — {s.category}, {s.beds} beds. {s.summary}</li>
+                              ))}
+                            </ul>
+                          </dd>
+                        </div>
+                      )}
+                      {application.typeSpecific.additional.justification && (
+                        <div className="sm:col-span-2">
+                          <dt className="text-gray-500 dark:text-gray-400">Justification</dt>
+                          <dd className="text-gray-900 dark:text-white">{application.typeSpecific.additional.justification}</dd>
+                        </div>
+                      )}
+                      {application.typeSpecific.additional.impact && (
+                        <div className="sm:col-span-2">
+                          <dt className="text-gray-500 dark:text-gray-400">Impact</dt>
+                          <dd className="text-gray-900 dark:text-white">{application.typeSpecific.additional.impact}</dd>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </dl>
+              </section>
+            )}
+
             {(!application.applicant || !application.facility) &&
-              (!application.services || application.services.length === 0) && (
-                <p className="text-sm text-gray-500 dark:text-gray-400">
+              (!application.services || application.services.length === 0) &&
+              !application.staffingHead?.name &&
+              !application.infrastructureDescription &&
+              !application.typeSpecific?.new &&
+              !application.typeSpecific?.renewal &&
+              !application.typeSpecific?.additional && (
+                <p className="text-sm text-muted-foreground">
                   No form data to display.
                 </p>
               )}
-          </div>
-        )}
-
-        {activeTab === "timeline" && (
-          <div className="space-y-4">
-            <h2 className="text-sm font-medium text-gray-900 dark:text-white">
-              Timeline
-            </h2>
-            <Timeline events={timelineEvents} />
-          </div>
-        )}
-      </div>
+              </div>
+            </CardContent>
+          </TabsContent>
+          <TabsContent value="timeline" className="mt-0">
+            <CardHeader>
+              <CardTitle className="text-base">Timeline</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <Timeline events={timelineEvents} />
+            </CardContent>
+          </TabsContent>
+        </Card>
+      </Tabs>
     </div>
   );
 }

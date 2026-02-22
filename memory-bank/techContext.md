@@ -9,8 +9,8 @@
 ## Current Repo
 
 - **Router:** TanStack Router (`@tanstack/react-router`) – migrated from React Router 7.
-- **Data:** TanStack Query (`@tanstack/react-query`) in place; mock API layer and hooks not yet implemented.
-- **UI:** Tailwind CSS 4 for layout and styling. shadcn not yet added (run `pnpm dlx shadcn@latest init` when needed).
+- **Data:** TanStack Query (`@tanstack/react-query`) in place; mock API in `app/data/mockApi.ts` (listApplications, getApplication, listFacilities, submitApplication, updateApplication, updateApplicationStatus); hooks in `app/hooks/` (useApplications, useApplication, useFacilities).
+- **UI:** Tailwind CSS 4 for layout and styling. shadcn components in `app/components/ui/` (button, input, label, textarea, select, checkbox, radio-group, tabs, card); Radix primitives and CVA used.
 - **React:** 19.x.
 - **Build:** Vite 7, TypeScript 5.9.
 - **Scripts:** `pnpm run dev`, `pnpm run build`, `pnpm run typecheck` (Vite + tsc).
@@ -29,4 +29,5 @@
 
 - react, react-dom, @tanstack/react-router, @tanstack/react-query.
 - tailwindcss, @tailwindcss/vite, @vitejs/plugin-react, vite, vite-tsconfig-paths, typescript, @types/*.
-- shadcn/ui to be added when implementing forms/tabs (optional until wizard).
+- shadcn/ui components (Radix: react-tabs, react-label, react-select, react-checkbox, react-radio-group, slot); class-variance-authority (cva).
+- recharts for dashboard charts (Applications by status, Applications over time).

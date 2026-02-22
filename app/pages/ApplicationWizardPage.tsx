@@ -1,11 +1,19 @@
-import { useState, useCallback } from "react";
-import { Link } from "@tanstack/react-router";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { Link, useParams } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
+import { Button } from "~/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
+import { RadioGroup, RadioGroupItem } from "~/components/ui/radio-group";
+import { Label } from "~/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import type { LicenseType } from "~/types/application";
 import type { ApplicantInfo, FacilityInfo, ServiceItem } from "~/types/application";
+import type { Application } from "~/types/application";
 import type { Facility } from "~/types/facility";
 import { useFacilities } from "~/hooks/useFacilities";
-import { submitApplication } from "~/data/mockApi";
+import { useApplication } from "~/hooks/useApplication";
+import { applicationQueryKey } from "~/hooks/useApplication";
+import { submitApplication, updateApplication } from "~/data/mockApi";
 import { applicationsQueryKey } from "~/hooks/useApplications";
 
 const STEPS = [
@@ -51,12 +59,59 @@ const initialWizardState: WizardState = {
   typeSpecific: {},
 };
 
+function applicationToWizardState(app: Application, facilities: Facility[] | undefined): WizardState {
+  const facilityId = app.facilityId ?? (app.facility?.licenseNumber
+    ? facilities?.find((f) => f.licenseNumber === app.facility?.licenseNumber)?.id ?? ""
+    : "");
+  return {
+    licenseType: app.licenseType,
+    applicant: app.applicant
+      ? {
+          name: app.applicant.name,
+          idType: app.applicant.idType,
+          idNumber: app.applicant.idNumber,
+          phone: app.applicant.phone,
+          email: app.applicant.email,
+          role: app.applicant.role,
+          authLetterRef: app.applicant.authLetterRef,
+        }
+      : {},
+    facilityId,
+    facilityNew: app.licenseType === "NEW" && app.facility
+      ? {
+          name: app.facility.name,
+          type: app.facility.type,
+          ownershipType: app.facility.ownershipType,
+          region: app.facility.region,
+          woreda: app.facility.woreda,
+        }
+      : {},
+    services: (app.services ?? []).map((s) => ({ name: s.name, level: s.level, bedCapacity: s.bedCapacity })),
+    totalBeds: app.totalBeds ?? "",
+    staffingHead: app.staffingHead ?? { name: "", qualification: "", licenseNumber: "" },
+    staffRows: (app.staffRows ?? []).map((r) => ({ name: r.name, cadre: r.cadre, license: r.license })),
+    infrastructureDescription: app.infrastructureDescription ?? "",
+    typeSpecific: app.typeSpecific ?? {},
+  };
+}
+
 export function ApplicationWizardPage() {
+  const { id } = useParams({ strict: false });
   const [step, setStep] = useState(0);
   const [state, setState] = useState<WizardState>(initialWizardState);
   const [submitted, setSubmitted] = useState<{ id: string } | null>(null);
+  const initializedForId = useRef<string | null>(null);
   const { data: facilities } = useFacilities();
+  const { data: application, isLoading: applicationLoading } = useApplication(id);
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (id && application && facilities !== undefined && initializedForId.current !== id) {
+      setState(applicationToWizardState(application, facilities));
+      initializedForId.current = id;
+    }
+    if (!id) initializedForId.current = null;
+  }, [id, application, facilities]);
 
   const update = useCallback(<K extends keyof WizardState>(key: K, value: WizardState[K]) => {
     setState((s) => ({ ...s, [key]: value }));
@@ -84,99 +139,130 @@ export function ApplicationWizardPage() {
   const handleBack = () => setStep((s) => Math.max(s - 1, 0));
 
   const handleSubmit = () => {
-    const payload = {
+    const facilityNameVal = facilityName || "Unnamed facility";
+    const fullPayload = {
       licenseType: state.licenseType!,
-      facilityName: facilityName || "Unnamed facility",
-      status: "Submitted" as const,
-      applicant: state.applicant.name ? { name: state.applicant.name, idType: state.applicant.idType, idNumber: state.applicant.idNumber, phone: state.applicant.phone, email: state.applicant.email, role: state.applicant.role } : undefined,
+      facilityName: facilityNameVal,
+      applicant: state.applicant.name ? { name: state.applicant.name, idType: state.applicant.idType, idNumber: state.applicant.idNumber, phone: state.applicant.phone, email: state.applicant.email, role: state.applicant.role, authLetterRef: state.applicant.authLetterRef } : undefined,
       facility: state.licenseType === "NEW"
         ? (state.facilityNew.name ? { name: state.facilityNew.name, type: state.facilityNew.type, ownershipType: state.facilityNew.ownershipType, region: state.facilityNew.region, woreda: state.facilityNew.woreda } : undefined)
         : (selectedFacility ? { name: selectedFacility.name, type: selectedFacility.type, licenseNumber: selectedFacility.licenseNumber } : undefined),
+      facilityId: state.licenseType !== "NEW" ? state.facilityId || undefined : undefined,
       services: state.services.length > 0 ? state.services.map((s) => ({ name: s.name, level: s.level, bedCapacity: s.bedCapacity })) : undefined,
+      totalBeds: state.totalBeds || undefined,
+      staffingHead: state.staffingHead.name ? state.staffingHead : undefined,
+      staffRows: state.staffRows.length > 0 ? state.staffRows : undefined,
+      infrastructureDescription: state.infrastructureDescription || undefined,
+      typeSpecific: Object.keys(state.typeSpecific).length > 0 ? state.typeSpecific : undefined,
     };
-    const created = submitApplication(payload);
-    queryClient.invalidateQueries({ queryKey: applicationsQueryKey });
-    setSubmitted({ id: created.id });
+    if (id) {
+      updateApplication(id, fullPayload);
+      queryClient.invalidateQueries({ queryKey: applicationsQueryKey });
+      queryClient.invalidateQueries({ queryKey: applicationQueryKey(id) });
+      setSubmitted({ id });
+    } else {
+      const created = submitApplication({ ...fullPayload, status: "Submitted" });
+      queryClient.invalidateQueries({ queryKey: applicationsQueryKey });
+      setSubmitted({ id: created.id });
+    }
   };
 
   if (submitted) {
+    const wasEdit = Boolean(id);
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
-          Application submitted
+        <h1 className="text-2xl font-semibold text-foreground">
+          {wasEdit ? "Application saved" : "Application submitted"}
         </h1>
         <p className="rounded-md bg-green-50 p-4 text-green-800 dark:bg-green-900/30 dark:text-green-200">
-          Your application has been submitted (mock). Application ID: <strong>{submitted.id}</strong>
+          {wasEdit
+            ? "Your changes have been saved (mock)."
+            : "Your application has been submitted (mock). Application ID: "}
+          {!wasEdit && <strong>{submitted.id}</strong>}
         </p>
         <div className="flex gap-3">
-          <Link
-            to="/applications"
-            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-          >
-            View all applications
-          </Link>
-          <Link
-            to="/applications/$id"
-            params={{ id: submitted.id }}
-            className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
-          >
-            View this application
-          </Link>
+          <Button asChild>
+            <Link to="/applications">View all applications</Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link to="/applications/$id" params={{ id: submitted.id }}>
+              View this application
+            </Link>
+          </Button>
         </div>
+      </div>
+    );
+  }
+
+  if (id && applicationLoading) {
+    return (
+      <div className="mx-auto max-w-2xl space-y-6">
+        <h1 className="text-2xl font-semibold text-foreground">Edit application</h1>
+        <p className="text-muted-foreground">Loading application…</p>
       </div>
     );
   }
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
-        New Application
+      <h1 className="text-2xl font-semibold text-foreground">
+        {id ? `Edit application ${id}` : "New Application"}
       </h1>
-      <div className="flex flex-wrap gap-2">
-        {STEPS.map((label, i) => (
-          <span
-            key={label}
-            className={`rounded px-2 py-1 text-xs font-medium ${i === step ? "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200" : i < step ? "bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200" : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"}`}
-          >
-            {i + 1}. {label}
-          </span>
-        ))}
-      </div>
+      <Tabs
+        value={String(step)}
+        onValueChange={(v) => setStep(Number(v))}
+        className="w-full"
+      >
+        <TabsList className="mb-4 flex h-auto w-full flex-wrap gap-1 bg-muted p-1">
+          {STEPS.map((label, i) => (
+            <TabsTrigger
+              key={label}
+              value={String(i)}
+              className="flex-1 min-w-0 shrink basis-20 text-xs data-[state=active]:bg-background"
+            >
+              {i + 1}. {label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+        <Card>
+          <TabsContent value="0" className="mt-0">
+            <CardHeader>
+              <CardTitle className="text-base">Select License Type</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <RadioGroup
+                value={state.licenseType ?? ""}
+                onValueChange={(v) => update("licenseType", v as LicenseType)}
+                className="grid gap-3"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="NEW" id="license-new" />
+                  <Label htmlFor="license-new" className="cursor-pointer font-normal">
+                    New facility license
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="RENEWAL" id="license-renewal" />
+                  <Label htmlFor="license-renewal" className="cursor-pointer font-normal">
+                    License renewal
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="ADDITIONAL_SERVICE" id="license-additional" />
+                  <Label htmlFor="license-additional" className="cursor-pointer font-normal">
+                    Additional service license
+                  </Label>
+                </div>
+              </RadioGroup>
+            </CardContent>
+          </TabsContent>
 
-      <div className="rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-950">
-        {/* Step 0 – License type */}
-        {step === 0 && (
+          <TabsContent value="1" className="mt-0">
+            <CardHeader>
+              <CardTitle className="text-base">Applicant Information</CardTitle>
+            </CardHeader>
+            <CardContent>
           <div className="space-y-4">
-            <h2 className="text-lg font-medium text-gray-900 dark:text-white">
-              Select License Type
-            </h2>
-            <div className="space-y-2">
-              {(["NEW", "RENEWAL", "ADDITIONAL_SERVICE"] as const).map((type) => (
-                <label key={type} className="flex cursor-pointer items-center gap-2">
-                  <input
-                    type="radio"
-                    name="licenseType"
-                    checked={state.licenseType === type}
-                    onChange={() => update("licenseType", type)}
-                    className="h-4 w-4"
-                  />
-                  <span className="text-gray-900 dark:text-white">
-                    {type === "NEW" && "New facility license"}
-                    {type === "RENEWAL" && "License renewal"}
-                    {type === "ADDITIONAL_SERVICE" && "Additional service license"}
-                  </span>
-                </label>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Step 1 – Applicant */}
-        {step === 1 && (
-          <div className="space-y-4">
-            <h2 className="text-lg font-medium text-gray-900 dark:text-white">
-              Applicant Information
-            </h2>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2">
                 <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Name *</label>
@@ -248,14 +334,14 @@ export function ApplicationWizardPage() {
               )}
             </div>
           </div>
-        )}
-
-        {/* Step 2 – Facility */}
-        {step === 2 && (
+            </CardContent>
+          </TabsContent>
+          <TabsContent value="2" className="mt-0">
+            <CardHeader>
+              <CardTitle className="text-base">Facility Information</CardTitle>
+            </CardHeader>
+            <CardContent>
           <div className="space-y-4">
-            <h2 className="text-lg font-medium text-gray-900 dark:text-white">
-              Facility Information
-            </h2>
             {state.licenseType === "NEW" ? (
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="sm:col-span-2">
@@ -325,14 +411,14 @@ export function ApplicationWizardPage() {
               </div>
             )}
           </div>
-        )}
-
-        {/* Step 3 – Services & capacity */}
-        {step === 3 && (
+            </CardContent>
+          </TabsContent>
+          <TabsContent value="3" className="mt-0">
+            <CardHeader>
+              <CardTitle className="text-base">Services & Capacity</CardTitle>
+            </CardHeader>
+            <CardContent>
           <div className="space-y-4">
-            <h2 className="text-lg font-medium text-gray-900 dark:text-white">
-              Services & Capacity
-            </h2>
             <div className="space-y-2">
               {SERVICE_OPTIONS.map((name) => {
                 const entry = state.services.find((s) => s.name === name);
@@ -398,14 +484,14 @@ export function ApplicationWizardPage() {
               />
             </div>
           </div>
-        )}
-
-        {/* Step 4 – Staffing */}
-        {step === 4 && (
+            </CardContent>
+          </TabsContent>
+          <TabsContent value="4" className="mt-0">
+            <CardHeader>
+              <CardTitle className="text-base">Staffing</CardTitle>
+            </CardHeader>
+            <CardContent>
           <div className="space-y-4">
-            <h2 className="text-lg font-medium text-gray-900 dark:text-white">
-              Staffing
-            </h2>
             <div className="grid gap-4 sm:grid-cols-3">
               <div>
                 <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Facility head – Name</label>
@@ -487,14 +573,14 @@ export function ApplicationWizardPage() {
               </div>
             </div>
           </div>
-        )}
-
-        {/* Step 5 – Infrastructure */}
-        {step === 5 && (
+            </CardContent>
+          </TabsContent>
+          <TabsContent value="5" className="mt-0">
+            <CardHeader>
+              <CardTitle className="text-base">Infrastructure</CardTitle>
+            </CardHeader>
+            <CardContent>
           <div className="space-y-4">
-            <h2 className="text-lg font-medium text-gray-900 dark:text-white">
-              Infrastructure
-            </h2>
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Layout description</label>
               <textarea
@@ -511,14 +597,14 @@ export function ApplicationWizardPage() {
               </div>
             </div>
           </div>
-        )}
-
-        {/* Step 6 – Type-specific */}
-        {step === 6 && (
+            </CardContent>
+          </TabsContent>
+          <TabsContent value="6" className="mt-0">
+            <CardHeader>
+              <CardTitle className="text-base">Type-specific information</CardTitle>
+            </CardHeader>
+            <CardContent>
           <div className="space-y-4">
-            <h2 className="text-lg font-medium text-gray-900 dark:text-white">
-              Type-specific information
-            </h2>
             {state.licenseType === "NEW" && (
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
@@ -713,14 +799,14 @@ export function ApplicationWizardPage() {
               <p className="text-sm text-gray-500">No type-specific fields.</p>
             )}
           </div>
-        )}
-
-        {/* Step 7 – Review & submit */}
-        {step === 7 && (
+            </CardContent>
+          </TabsContent>
+          <TabsContent value="7" className="mt-0">
+            <CardHeader>
+              <CardTitle className="text-base">Review & Submit</CardTitle>
+            </CardHeader>
+            <CardContent>
           <div className="space-y-6">
-            <h2 className="text-lg font-medium text-gray-900 dark:text-white">
-              Review & Submit
-            </h2>
             <div className="space-y-3 text-sm">
               <section>
                 <h3 className="font-medium text-gray-700 dark:text-gray-300">License type</h3>
@@ -750,37 +836,29 @@ export function ApplicationWizardPage() {
               </section>
             </div>
           </div>
-        )}
-
-        <div className="mt-6 flex justify-between border-t border-gray-200 pt-4 dark:border-gray-800">
-          <button
+            </CardContent>
+          </TabsContent>
+        <div className="mt-6 flex justify-between border-t border-border px-6 pb-6 pt-4">
+          <Button
             type="button"
+            variant="outline"
             onClick={handleBack}
             disabled={step === 0}
-            className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
           >
             Back
-          </button>
+          </Button>
           {step < 7 ? (
-            <button
-              type="button"
-              onClick={handleNext}
-              disabled={!canNext}
-              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-            >
+            <Button type="button" onClick={handleNext} disabled={!canNext}>
               Next
-            </button>
+            </Button>
           ) : (
-            <button
-              type="button"
-              onClick={handleSubmit}
-              className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
-            >
-              Submit application
-            </button>
+            <Button type="button" onClick={handleSubmit}>
+              {id ? "Save changes" : "Submit application"}
+            </Button>
           )}
         </div>
-      </div>
+        </Card>
+      </Tabs>
     </div>
   );
 }

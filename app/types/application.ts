@@ -17,6 +17,7 @@ export interface ApplicantInfo {
   phone?: string;
   email?: string;
   role?: "owner" | "representative";
+  authLetterRef?: string;
 }
 
 /** Minimal facility info (embedded in application) */
@@ -42,6 +43,60 @@ export interface TimelineEvent {
   label: string;
 }
 
+/** Staffing head (facility head) */
+export interface StaffingHead {
+  name: string;
+  qualification: string;
+  licenseNumber: string;
+}
+
+/** One staff row */
+export interface StaffRow {
+  name: string;
+  cadre: string;
+  license: string;
+}
+
+/** Type-specific data for NEW license */
+export interface TypeSpecificNew {
+  startDate?: string;
+  constructionStatus?: string;
+  readyForInspection?: boolean;
+}
+
+/** Type-specific data for RENEWAL */
+export interface TypeSpecificRenewal {
+  licenseNumber?: string;
+  issueDate?: string;
+  expiryDate?: string;
+  changes?: string;
+  lastInspection?: string;
+  inspectionSummary?: string;
+}
+
+/** New service for ADDITIONAL_SERVICE */
+export interface NewServiceItem {
+  name: string;
+  category: string;
+  beds: string;
+  summary: string;
+}
+
+/** Type-specific data for ADDITIONAL_SERVICE */
+export interface TypeSpecificAdditional {
+  currentServices?: string;
+  newServices?: NewServiceItem[];
+  justification?: string;
+  impact?: string;
+}
+
+/** Type-specific block (one of new/renewal/additional by license type) */
+export interface TypeSpecific {
+  new?: TypeSpecificNew;
+  renewal?: TypeSpecificRenewal;
+  additional?: TypeSpecificAdditional;
+}
+
 /** Application as stored and returned by mock API */
 export interface Application {
   id: string;
@@ -51,6 +106,12 @@ export interface Application {
   lastUpdated: string; // ISO date string
   applicant?: ApplicantInfo;
   facility?: FacilityInfo;
+  facilityId?: string;
   services?: ServiceItem[];
+  totalBeds?: string;
+  staffingHead?: StaffingHead;
+  staffRows?: StaffRow[];
+  infrastructureDescription?: string;
+  typeSpecific?: TypeSpecific;
   timeline?: TimelineEvent[];
 }
