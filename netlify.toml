@@ -1,0 +1,6 @@
+# Netlify config for Vite SPA
+[build]
+  command = "pnpm run build"
+  publish = "dist"
+
+# _redirects in public/ is copied to dist/ by Vite; Netlify uses it for SPA fallback
