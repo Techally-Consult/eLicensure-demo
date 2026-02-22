@@ -1,10 +1,14 @@
 /** License type for the application */
 export type LicenseType = "NEW" | "RENEWAL" | "ADDITIONAL_SERVICE";
 
-/** Application status */
+/** Application status (workflow: Draft → Submitted → Assigned → Under Inspection → Inspection Submitted/Rejected → Approved/Returned to Applicant) */
 export type ApplicationStatus =
   | "Draft"
   | "Submitted"
+  | "Assigned"
+  | "Under Inspection"
+  | "Inspection Submitted"
+  | "Inspection Rejected"
   | "Under Review"
   | "Approved"
   | "Rejected";
@@ -41,6 +45,15 @@ export interface ServiceItem {
 export interface TimelineEvent {
   date: string; // ISO date string
   label: string;
+  remark?: string;
+}
+
+/** Inspection result from inspector */
+export interface InspectionResult {
+  result: "Submitted" | "Rejected";
+  remark?: string;
+  submittedAt: string; // ISO
+  submittedBy: string; // user id
 }
 
 /** Staffing head (facility head) */
@@ -114,4 +127,12 @@ export interface Application {
   infrastructureDescription?: string;
   typeSpecific?: TypeSpecific;
   timeline?: TimelineEvent[];
+  /** Inspector user id when status is Assigned / Under Inspection / Inspection Submitted / Inspection Rejected */
+  assignedTo?: string;
+  /** Inspection result when inspector has submitted */
+  inspection?: InspectionResult;
+  /** Remark when returned to applicant (team leader) */
+  remark?: string;
+  /** Applicant user id (owner of the application); used to filter "my applications" for Applicant role */
+  applicantUserId?: string;
 }

@@ -12,6 +12,10 @@ import type { Application } from "~/types/application";
 const STATUS_ORDER: Application["status"][] = [
   "Draft",
   "Submitted",
+  "Assigned",
+  "Under Inspection",
+  "Inspection Submitted",
+  "Inspection Rejected",
   "Under Review",
   "Approved",
   "Rejected",

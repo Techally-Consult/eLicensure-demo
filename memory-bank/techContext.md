@@ -9,8 +9,9 @@
 ## Current Repo
 
 - **Router:** TanStack Router (`@tanstack/react-router`) – migrated from React Router 7.
-- **Data:** TanStack Query (`@tanstack/react-query`) in place; mock API in `app/data/mockApi.ts` (listApplications, getApplication, listFacilities, submitApplication, updateApplication, updateApplicationStatus); hooks in `app/hooks/` (useApplications, useApplication, useFacilities).
-- **UI:** Tailwind CSS 4 for layout and styling. shadcn components in `app/components/ui/` (button, input, label, textarea, select, checkbox, radio-group, tabs, card); Radix primitives and CVA used.
+- **Auth (mock):** React context (AuthProvider in main.tsx); `app/contexts/AuthContext.tsx`; `app/data/mockAuth.ts` (4 users, sessionStorage); no real auth.
+- **Data:** TanStack Query; mock API in `app/data/mockApi.ts` (listApplications(role, userId) for role-filtered list, get + mutations; mutations emit in-app notifications). Notifications: `app/data/mockNotifications.ts` (store, addNotification, getNotifications, markRead, subscribe); `app/hooks/useNotifications.ts`. Optional seed: seedNotifications() for demo notifications per role.
+- **UI:** Tailwind CSS 4; shadcn in `app/components/ui/` (button, input, label, textarea, select, checkbox, radio-group, tabs, card); Radix + CVA.
 - **React:** 19.x.
 - **Build:** Vite 7, TypeScript 5.9.
 - **Scripts:** `pnpm run dev`, `pnpm run build`, `pnpm run typecheck` (Vite + tsc).
@@ -21,7 +22,7 @@
 
 ## Technical Constraints
 
-- Static/mock data only; no real API or auth.
+- Static/mock data only; no real API; mock auth (role selection, sessionStorage).
 - TypeScript throughout.
 - Tailwind for layout and spacing (`container`, `max-w-3xl`, `mx-auto`, `flex`, `gap-4`).
 

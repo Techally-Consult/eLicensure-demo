@@ -13,10 +13,14 @@
 
 ## How It Should Work
 
-1. **Entry:** User lands on Dashboard with summary cards (in progress, submitted, approved), charts (by status, over time), and recent applications; “Start New Application” leads to `/apply`.
-2. **List:** `/applications` shows all applications with ID, facility name, license type, status, last updated; “View” goes to detail.
-3. **Detail:** `/applications/$id` shows application with Summary / Form / Timeline tabs; **Edit** button links to `/apply/$id`; **status dropdown** (Draft, Submitted, Under Review, Approved, Rejected) updates application and timeline. Form tab shows full form data (applicant, facility, services, capacity & staffing, infrastructure, type-specific).
-4. **Wizard:** `/apply` (new) or `/apply/$id` (edit). Edit pre-fills wizard from application. Steps: license type → applicant → facility (new or select existing) → services & capacity → staffing → infrastructure → type-specific → review & submit. Submit creates (new) or saves changes (edit); success screen links to list and detail.
+1. **Login:** User selects role (Admin, Applicant, Team Leader, Inspector) and logs in (mock); redirect to Dashboard.
+2. **Entry:** Dashboard is role-specific: subtitle and summary cards (Applicant/TL/Admin: in progress, submitted, approved; Inspector: assigned, under inspection, inspection done), same charts and recent list; CTA by role—Applicant/Admin: “Start New Application”; Inspector: “View my inspections”; Team Leader: “Assign inspections.”
+3. **List:** `/applications` shows applications filtered by role (Applicant: own; Inspector: assigned to me; Team Leader/Admin: all); “View” → detail. Nav is role-based: Applicant/Admin see Applications (List, New, Renewal, Variation, Additional service); Team Leader and Inspector see Applications (List) and Inspection.
+4. **Detail:** Summary / Form / Timeline; Edit → `/apply/$id`; status dropdown (all workflow statuses) updates application and timeline.
+5. **Wizard:** `/apply` or `/apply/$id`; search `?type=renewal|variation|additional` pre-selects license type; create or save (edit).
+6. **Team Leader** (`/team-leader`): Tab “Assign to inspector” — list Submitted, assign inspector per application; Tab “Review inspection” — list Inspection Submitted/Rejected, Approve license or Return to applicant with remark.
+7. **Inspector** (`/inspection`): List applications assigned to me; open → inspection detail; submit result (Submitted/Rejected) + remark.
+8. **Users** (`/users`, Admin only): List four mock users (name, email, role).
 
 ## User Experience Goals
 
@@ -25,4 +29,5 @@
 - Pre-filled facility data when renewal or additional service + existing facility selected.
 - Edit from detail pre-fills wizard with full application data; save updates in-memory store.
 - Status change on detail updates application and timeline (demo: any transition allowed).
-- Optional toast/alert on “Application submitted (mock)”.
+- **In-app notifications:** Bell in header; dropdown with list, mark as read, link to application. Notifications on status change (applicant), assign (inspector), inspection submit (team leader + applicant), approve/return (applicant). Optional: seed notifications per role so each user sees demo content on login.
+- Optional toast on “Application submitted (mock).”

@@ -1,5 +1,16 @@
-import type { Application, ApplicationStatus } from "~/types/application";
+import type {
+  Application,
+  ApplicationStatus,
+  InspectionResult,
+} from "~/types/application";
 import type { Facility } from "~/types/facility";
+import type { UserRole } from "~/types/auth";
+import { addNotification } from "~/data/mockNotifications";
+
+export type ListApplicationsOptions = { role?: UserRole; userId?: string };
+
+const APPLICANT_USER_ID = "user-applicant";
+const TEAM_LEADER_USER_ID = "user-tl";
 
 /** In-memory store for demo. Mutations (e.g. submit) update this. */
 const applicationsStore: Application[] = [
@@ -9,6 +20,7 @@ const applicationsStore: Application[] = [
     facilityName: "Sunrise Health Center",
     status: "Submitted",
     lastUpdated: "2025-02-18T10:00:00Z",
+    applicantUserId: APPLICANT_USER_ID,
     applicant: {
       name: "Abebe Kebede",
       idType: "National ID",
@@ -56,8 +68,10 @@ const applicationsStore: Application[] = [
     id: "APP-002",
     licenseType: "RENEWAL",
     facilityName: "Mercy General Clinic",
-    status: "Under Review",
+    status: "Assigned",
     lastUpdated: "2025-02-19T14:30:00Z",
+    applicantUserId: APPLICANT_USER_ID,
+    assignedTo: "user-inspector",
     facilityId: "fac-1",
     applicant: {
       name: "Tigist Hailu",
@@ -103,6 +117,7 @@ const applicationsStore: Application[] = [
     facilityName: "Hope Medical Center",
     status: "Approved",
     lastUpdated: "2025-02-15T09:00:00Z",
+    applicantUserId: APPLICANT_USER_ID,
     facilityId: "fac-2",
     applicant: {
       name: "Dawit Bekele",
@@ -153,6 +168,7 @@ const applicationsStore: Application[] = [
     facilityName: "Bole Family Clinic",
     status: "Draft",
     lastUpdated: "2025-02-20T08:00:00Z",
+    applicantUserId: APPLICANT_USER_ID,
     applicant: {
       name: "Meron Abebe",
       idType: "National ID",
@@ -192,6 +208,7 @@ const applicationsStore: Application[] = [
     facilityName: "Kality Health Post",
     status: "Submitted",
     lastUpdated: "2025-02-18T11:00:00Z",
+    applicantUserId: APPLICANT_USER_ID,
     applicant: {
       name: "Getachew Tesfaye",
       idType: "National ID",
@@ -232,8 +249,10 @@ const applicationsStore: Application[] = [
     id: "APP-006",
     licenseType: "NEW",
     facilityName: "Lebu Specialty Center",
-    status: "Under Review",
+    status: "Under Inspection",
     lastUpdated: "2025-02-19T16:00:00Z",
+    applicantUserId: APPLICANT_USER_ID,
+    assignedTo: "user-inspector",
     applicant: {
       name: "Sara Mohammed",
       idType: "National ID",
@@ -284,6 +303,7 @@ const applicationsStore: Application[] = [
     facilityName: "Sunrise Health Center",
     status: "Approved",
     lastUpdated: "2025-02-14T10:00:00Z",
+    applicantUserId: APPLICANT_USER_ID,
     applicant: {
       name: "Abebe Kebede",
       idType: "National ID",
@@ -333,6 +353,7 @@ const applicationsStore: Application[] = [
     facilityName: "Akaki General Hospital",
     status: "Rejected",
     lastUpdated: "2025-02-12T09:00:00Z",
+    applicantUserId: APPLICANT_USER_ID,
     applicant: {
       name: "Yonas Desta",
       idType: "National ID",
@@ -383,6 +404,7 @@ const applicationsStore: Application[] = [
     facilityName: "Gondar Medical Hub",
     status: "Submitted",
     lastUpdated: "2025-02-17T15:00:00Z",
+    applicantUserId: APPLICANT_USER_ID,
     applicant: {
       name: "Helen Tadesse",
       idType: "National ID",
@@ -434,6 +456,7 @@ const applicationsStore: Application[] = [
     facilityName: "Hawassa Community Clinic",
     status: "Draft",
     lastUpdated: "2025-02-16T12:00:00Z",
+    applicantUserId: APPLICANT_USER_ID,
     applicant: {
       name: "Daniel Assefa",
       idType: "National ID",
@@ -472,8 +495,10 @@ const applicationsStore: Application[] = [
     id: "APP-011",
     licenseType: "ADDITIONAL_SERVICE",
     facilityName: "Mercy General Clinic",
-    status: "Under Review",
+    status: "Inspection Submitted",
     lastUpdated: "2025-02-20T09:00:00Z",
+    applicantUserId: APPLICANT_USER_ID,
+    assignedTo: "user-inspector",
     facilityId: "fac-1",
     applicant: {
       name: "Tigist Hailu",
@@ -523,6 +548,7 @@ const applicationsStore: Application[] = [
     facilityName: "Dire Dawa Health Center",
     status: "Approved",
     lastUpdated: "2025-01-30T14:00:00Z",
+    applicantUserId: APPLICANT_USER_ID,
     applicant: {
       name: "Kebede Alemu",
       idType: "National ID",
@@ -595,8 +621,20 @@ const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 /** Simulate network delay (optional, e.g. 100–200ms) */
 const MOCK_DELAY_MS = 80;
 
-export async function listApplications(): Promise<Application[]> {
+export async function listApplications(
+  options?: ListApplicationsOptions
+): Promise<Application[]> {
   await delay(MOCK_DELAY_MS);
+  const { role, userId } = options ?? {};
+  if (role === "Applicant" && userId) {
+    return applicationsStore.filter((a) => a.applicantUserId === userId);
+  }
+  if (role === "Inspector" && userId) {
+    return applicationsStore.filter((a) => a.assignedTo === userId);
+  }
+  if (role === "Team Leader" || role === "Admin") {
+    return [...applicationsStore];
+  }
   return [...applicationsStore];
 }
 
@@ -657,7 +695,8 @@ export function updateApplication(
 /** Update only the status of an application and append to timeline. Returns updated or null. */
 export function updateApplicationStatus(
   id: string,
-  newStatus: ApplicationStatus
+  newStatus: ApplicationStatus,
+  remark?: string
 ): Application | null {
   const index = applicationsStore.findIndex((a) => a.id === id);
   if (index === -1) return null;
@@ -667,11 +706,116 @@ export function updateApplicationStatus(
     ...existing,
     status: newStatus,
     lastUpdated,
+    ...(remark !== undefined && { remark }),
     timeline: [
       ...(existing.timeline ?? []),
-      { date: lastUpdated, label: newStatus },
+      { date: lastUpdated, label: newStatus, ...(remark && { remark }) },
     ],
   };
   applicationsStore[index] = updated;
+  addNotification(APPLICANT_USER_ID, {
+    applicationId: id,
+    type: "status_change",
+    message: `Application ${id} status changed to ${newStatus}.`,
+  });
+  return updated;
+}
+
+/** Team leader: assign application to inspector. Status → Assigned, sets assignedTo. */
+export function assignApplication(
+  id: string,
+  inspectorId: string
+): Application | null {
+  const index = applicationsStore.findIndex((a) => a.id === id);
+  if (index === -1) return null;
+  const lastUpdated = new Date().toISOString();
+  const existing = applicationsStore[index];
+  const updated: Application = {
+    ...existing,
+    status: "Assigned",
+    assignedTo: inspectorId,
+    lastUpdated,
+    timeline: [
+      ...(existing.timeline ?? []),
+      { date: lastUpdated, label: "Assigned" },
+    ],
+  };
+  applicationsStore[index] = updated;
+  return updated;
+}
+
+/** Inspector: set application to Under Inspection when they start (optional; or do it on assign). */
+export function setUnderInspection(id: string): Application | null {
+  return updateApplicationStatus(id, "Under Inspection");
+}
+
+/** Inspector: submit inspection result. Status → Inspection Submitted or Inspection Rejected. */
+export function submitInspection(
+  id: string,
+  result: "Submitted" | "Rejected",
+  remark: string,
+  submittedBy: string
+): Application | null {
+  const index = applicationsStore.findIndex((a) => a.id === id);
+  if (index === -1) return null;
+  const lastUpdated = new Date().toISOString();
+  const existing = applicationsStore[index];
+  const inspection: InspectionResult = {
+    result,
+    remark: remark || undefined,
+    submittedAt: lastUpdated,
+    submittedBy,
+  };
+  const newStatus: ApplicationStatus =
+    result === "Submitted" ? "Inspection Submitted" : "Inspection Rejected";
+  const updated: Application = {
+    ...existing,
+    status: newStatus,
+    inspection,
+    lastUpdated,
+    timeline: [
+      ...(existing.timeline ?? []),
+      { date: lastUpdated, label: newStatus, remark: remark || undefined },
+    ],
+  };
+  applicationsStore[index] = updated;
+  addNotification(TEAM_LEADER_USER_ID, {
+    applicationId: id,
+    type: "inspection_submitted",
+    message: `Inspection submitted for application ${id} (${existing.facilityName}). Result: ${result}.`,
+  });
+  addNotification(APPLICANT_USER_ID, {
+    applicationId: id,
+    type: "status_change",
+    message: `Application ${id} inspection result: ${newStatus}.`,
+  });
+  return updated;
+}
+
+/** Team leader: approve license. Status → Approved. */
+export function approveLicense(id: string): Application | null {
+  const app = applicationsStore.find((a) => a.id === id);
+  const updated = updateApplicationStatus(id, "Approved");
+  if (updated) {
+    addNotification(APPLICANT_USER_ID, {
+      applicationId: id,
+      type: "approved",
+      message: `Application ${id} (${app?.facilityName ?? id}) has been approved.`,
+    });
+  }
+  return updated;
+}
+
+/** Team leader: return to applicant with remark. Status → Rejected, sets remark. */
+export function returnToApplicant(id: string, remark: string): Application | null {
+  const app = applicationsStore.find((a) => a.id === id);
+  const updated = updateApplicationStatus(id, "Rejected", remark);
+  if (updated) {
+    addNotification(APPLICANT_USER_ID, {
+      applicationId: id,
+      type: "returned",
+      message: `Application ${id} (${app?.facilityName ?? id}) was returned. ${remark ? `Remark: ${remark}` : ""}`,
+    });
+  }
   return updated;
 }

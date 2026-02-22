@@ -14,13 +14,16 @@ eLicensure (facility licensing demo) – static web app prototype.
 
 ## Scope (Source of Truth)
 
-- **Screens:** Global layout (AppLayout/AppShell), Dashboard (`/`), Application List (`/applications`), Application Detail (`/applications/$id`), New Application Wizard (`/apply`), Edit Application Wizard (`/apply/$id`).
-- **Wizard:** Single multi-step flow for all three license types (Steps 0–7: license type → applicant → facility → services & capacity → staffing → infrastructure → type-specific → review & submit). Supports both create (`/apply`) and edit (`/apply/$id`); edit loads application into wizard state and saves via `updateApplication`.
-- **Data:** Mock applications (12 seed, full-form) and mock facilities; async mock API layer (`listApplications`, `getApplication`, `submitApplication`, `updateApplication`, `updateApplicationStatus`); TanStack Query hooks; wizard state kept local in wizard page; detail supports status change (updates store + timeline).
-- **UI:** shadcn form patterns, Tailwind layout/spacing, status pills, summary cards, tables, timeline, stepper.
+- **Screens:** Login (`/login`); global layout (AppLayout) with role-based nav; Dashboard (`/`); Application List (`/applications`), Application Detail (`/applications/$id`); New/Edit Application Wizard (`/apply`, `/apply/$id`); Team Leader (`/team-leader` — assign inspector, review inspection); Inspection list/detail (`/inspection`, `/inspection/$id` — inspector); Users (`/users` — Admin only).
+- **Auth (mock):** Four roles (Admin, Applicant, Team Leader, Inspector); mock login by role selection; current user in AuthContext + sessionStorage; unauthenticated users redirected to `/login`.
+- **Wizard:** Single multi-step flow for all three license types; supports create and edit; search param `type=renewal|variation|additional` pre-selects license type.
+- **Workflow:** Applicant: Draft → Submitted. Team leader: assign to inspector → Assigned → Under Inspection. Inspector: submit inspection → Inspection Submitted or Inspection Rejected. Team leader: approve license or return to applicant with remark. Statuses: Draft, Submitted, Assigned, Under Inspection, Inspection Submitted, Inspection Rejected, Under Review, Approved, Rejected.
+- **Data:** Mock applications (12 seed, full-form, each with applicantUserId; 2–3 with assignedTo for Inspector demo), facilities, mock users; API includes listApplications(options?: { role, userId }) for role-filtered list, assignApplication, submitInspection, approveLicense, returnToApplicant; Application has applicantUserId, assignedTo, inspection, remark.
+- **UI:** shadcn form patterns, Tailwind layout/spacing, status pills, summary cards, tables, timeline, role-based sidebar; application list and dashboard content vary by role (Applicant: my applications; Inspector: assigned to me; Team Leader/Admin: all).
 
 ## Out of Scope (Prototype)
 
 - Real backend or persistence.
 - Real file upload (floor plan is placeholder).
-- Authentication beyond a placeholder avatar.
+- Real authentication (mock: role selection only).
+- In-app notifications: implemented (mock store, bell + dropdown); optional next: seed notifications per role so each user sees demo notifications on login.

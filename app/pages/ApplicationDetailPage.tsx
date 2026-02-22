@@ -24,6 +24,10 @@ type DetailTab = "summary" | "form" | "timeline";
 const STATUS_OPTIONS: ApplicationStatus[] = [
   "Draft",
   "Submitted",
+  "Assigned",
+  "Under Inspection",
+  "Inspection Submitted",
+  "Inspection Rejected",
   "Under Review",
   "Approved",
   "Rejected",

@@ -3,23 +3,52 @@
 ## What Works
 
 - **Stack:** TanStack Router, TanStack Query, React 19, Tailwind 4, Vite 7, TypeScript, shadcn UI, Recharts.
-- **Routing:** Route tree with Dashboard, Applications list, Application detail, Apply (new and edit at `/apply` and `/apply/$id`).
-- **Data layer:** Types in `app/types/application.ts` (Application, ApplicantInfo, FacilityInfo, ServiceItem, StaffingHead, StaffRow, TypeSpecific*, TimelineEvent) and `app/types/facility.ts`. Mock API in `app/data/mockApi.ts`: listApplications(), getApplication(id), listFacilities(), submitApplication(payload), updateApplication(id, payload), updateApplicationStatus(id, newStatus). **12 seed applications** with full-form data (applicant, facility, facilityId where applicable, services, totalBeds, staffingHead, staffRows, infrastructureDescription, typeSpecific). 2 facilities in store.
-- **Query hooks:** useApplications(), useApplication(id), useFacilities() in `app/hooks/`. Invalidation on submit/update/status change.
-- **Dashboard:** Summary cards (in progress / submitted / approved), charts (Applications by status, Applications over time), “Start New Application” CTA, recent applications list with View link.
-- **Applications list:** Table (ID, facility name, license type, status, last updated), StatusBadge, View → detail.
-- **Application detail:** Header (ID, status badge, license type); **Edit** button → `/apply/$id`; **Status** Select (Draft, Submitted, Under Review, Approved, Rejected) calling updateApplicationStatus; tabs Summary / Form / Timeline. Form tab: Applicant (incl. authLetterRef), Facility, Services, Capacity & staffing (totalBeds, staffingHead, staffRows), Infrastructure, Type-specific (new/renewal/additional). Timeline from application.timeline or fallback.
-- **Application Wizard:** `/apply` (new) and `/apply/$id` (edit). Steps 0–7 with shadcn Tabs + Card; Step 0 RadioGroup for license type. When editing, application loaded into wizard state via applicationToWizardState; Submit → updateApplication(id, fullPayload) and “Application saved” or submitApplication and “Application submitted”. Full payload includes applicant, facility, facilityId, services, totalBeds, staffingHead, staffRows, infrastructureDescription, typeSpecific.
-- **Shared:** StatusBadge, Timeline, ApplicationsByStatusChart, ApplicationsOverTimeChart; shadcn components in `app/components/ui/`.
+- **Auth:** Mock login at `/login` (role select); 4 users (Admin, Applicant, Team Leader, Inspector); AuthContext + sessionStorage; RootLayout auth gate; AppLayout shows user name, role, Log out.
+- **Routing:** `/login`, `/`, `/applications`, `/applications/$id`, `/apply`, `/apply/$id`, `/team-leader`, `/inspection`, `/inspection/$id`, `/users`. Role-based nav; route protection (Users, Team Leader, Inspection pages).
+- **Data:** Application type with full-form fields + applicantUserId, assignedTo, inspection, remark; statuses including Assigned, Under Inspection, Inspection Submitted/Rejected. Mock API: listApplications(options) for role-filtered list, submit (with applicantUserId), update, updateStatus, assign, setUnderInspection, submitInspection, approveLicense, returnToApplicant. 12 seed applications (all with applicantUserId; APP-002, APP-006, APP-011 with assignedTo for Inspector), 2 facilities, 4 mock users.
+- **Notifications:** Types in `app/types/notification.ts`. Store and API in `app/data/mockNotifications.ts` (getNotifications, addNotification, markRead, markAllRead, subscribe). Notifications emitted from mockApi on status change (→ applicant), assign (→ inspector), inspection submit (→ team leader + applicant), approve/return (→ applicant). `useNotifications(userId)` hook; `NotificationsDropdown` in AppLayout header (bell + unread count, dropdown list, mark as read, link to application).
+- **Dashboard:** Role-specific subtitle and summary cards (Applicant/TL/Admin: in progress, submitted, approved; Inspector: assigned, under inspection, inspection done); same charts and recent list; CTA by role (Applicant/Admin: Start New Application; Inspector: View my inspections; Team Leader: Assign inspections).
+- **Applications list & detail:** List filtered by role (Applicant: own; Inspector: assigned; TL/Admin: all), StatusBadge, View → detail. Detail: Edit → `/apply/$id`, status Select (all workflow statuses), Summary/Form/Timeline tabs.
+- **Wizard:** Create/edit; search `?type=renewal|variation|additional` pre-selects license type; on create, passes applicantUserId from useAuth(); full payload save.
+- **Team Leader:** `/team-leader` — Assign (list Submitted, assign inspector), Review (list Inspection Submitted/Rejected, Approve or Return to applicant with remark).
+- **Inspector:** `/inspection` list (my assigned); `/inspection/$id` (summary + submit inspection); opening detail sets Under Inspection when Assigned.
+- **Users:** `/users` lists 4 mock users; Admin only.
 - **Scripts:** `pnpm run dev`, `pnpm run build`, `pnpm run typecheck` succeed.
 
-## What’s Left to Build
+## What’s Left to Build (Optional)
 
-- [ ] **Optional:** Toast (sonner) for submit/save confirmation; more wizard inputs as shadcn Input/Label/Select; empty states, a11y polish.
+- [ ] **Seed notifications for all roles:** Pre-populate 2–4 notifications per user (Applicant, Team Leader, Inspector, Admin) so the bell dropdown shows demo content on first load. Plan in activeContext.md.
+- [ ] **Toast:** Sonner for submit/save and assign/inspection actions.
+- [ ] **Polish:** Empty states, a11y, more shadcn in wizard.
+- [ ] **VARIATION license type:** Add to wizard if product requires it.
 
 ## Current Status
 
-- **Phase:** PRD scope complete; full-form seed data; edit flow and status change implemented. Optional: toast, form primitives, polish.
+- **Phase:** Core workflow + in-app notifications complete. Optional: seed notifications per role, toast, polish, VARIATION type.
+
+## Next Step (Plan): Seeding notification data for all roles
+
+**Goal:** Each of the 4 users sees demo notifications when they log in (no empty bell).
+
+**Approach:**
+
+1. **Add `seedNotifications()` in `app/data/mockNotifications.ts`**
+   - Guard: run only if store is empty (e.g. `store.size === 0`) to avoid duplicates on hot reload.
+   - For each userId (`user-applicant`, `user-tl`, `user-inspector`, `user-admin`), call `addNotification(userId, { applicationId, type, message })` 2–4 times with varied types and messages, using existing seed application ids (APP-001, APP-002, APP-003, APP-006, APP-008, etc.).
+
+2. **Per-role seed content (examples)**
+   - **Applicant:** status_change (APP-001 → Under Review), approved (APP-003, Hope Medical Center), returned (APP-008 with short remark).
+   - **Team Leader:** inspection_submitted (APP-006, Lebu Specialty Center, Result: Inspection Submitted).
+   - **Inspector:** assigned (APP-002, Mercy General Clinic).
+   - **Admin:** e.g. status_change (APP-001), approved (APP-003) so Admin sees the same kind of content.
+
+3. **When to run**
+   - Call `seedNotifications()` at the end of `mockNotifications.ts` when the module loads, inside the guard so it runs only once per session. Alternatively call from `main.tsx` or `AuthProvider` in a `useEffect` once; guard by “already seeded” flag or empty store.
+
+4. **Implementation detail**
+   - Use existing `addNotification` for each seed so order and format stay consistent. No need to set custom `createdAt` for demo; “now” is fine. If we want oldest-first in dropdown we could push in reverse order or rely on existing sort (newest first).
+
+**Result:** Applicant, Team Leader, Inspector, and Admin each see a few relevant notifications in the bell dropdown immediately after login.
 
 ## Known Issues
 

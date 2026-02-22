@@ -3,14 +3,25 @@ import {
   createRootRoute,
   Outlet,
 } from "@tanstack/react-router";
-import { AppLayout } from "./layouts/AppLayout";
+import { RootLayout } from "./layouts/RootLayout";
 import { DashboardPage } from "./pages/DashboardPage";
 import { ApplicationsListPage } from "./pages/ApplicationsListPage";
 import { ApplicationDetailPage } from "./pages/ApplicationDetailPage";
 import { ApplicationWizardPage } from "./pages/ApplicationWizardPage";
+import { LoginPage } from "./pages/LoginPage";
+import { InspectionListPage } from "./pages/InspectionListPage";
+import { InspectionDetailPage } from "./pages/InspectionDetailPage";
+import { TeamLeaderPage } from "./pages/TeamLeaderPage";
+import { UsersPage } from "./pages/UsersPage";
 
 const rootRoute = createRootRoute({
-  component: AppLayout,
+  component: RootLayout,
+});
+
+const loginRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "login",
+  component: LoginPage,
 });
 
 const indexRoute = createRoute({
@@ -65,8 +76,47 @@ const applicationsRouteWithChildren = applicationsRoute.addChildren([
   applicationDetailRoute,
 ]);
 
+const inspectionLayoutRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "inspection",
+  component: () => <Outlet />,
+});
+
+const inspectionIndexRoute = createRoute({
+  getParentRoute: () => inspectionLayoutRoute,
+  path: "/",
+  component: InspectionListPage,
+});
+
+const inspectionIdRoute = createRoute({
+  getParentRoute: () => inspectionLayoutRoute,
+  path: "$id",
+  component: InspectionDetailPage,
+});
+
+const inspectionLayoutWithChildren = inspectionLayoutRoute.addChildren([
+  inspectionIndexRoute,
+  inspectionIdRoute,
+]);
+
+const teamLeaderRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "team-leader",
+  component: TeamLeaderPage,
+});
+
+const usersRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "users",
+  component: UsersPage,
+});
+
 export const routeTree = rootRoute.addChildren([
+  loginRoute,
   indexRoute,
   applicationsRouteWithChildren,
   applyLayoutWithChildren,
+  inspectionLayoutWithChildren,
+  teamLeaderRoute,
+  usersRoute,
 ]);

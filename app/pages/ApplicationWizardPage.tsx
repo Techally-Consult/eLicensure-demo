@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { Link, useParams } from "@tanstack/react-router";
+import { Link, useParams, useSearch } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "~/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
@@ -15,6 +15,7 @@ import { useApplication } from "~/hooks/useApplication";
 import { applicationQueryKey } from "~/hooks/useApplication";
 import { submitApplication, updateApplication } from "~/data/mockApi";
 import { applicationsQueryKey } from "~/hooks/useApplications";
+import { useAuth } from "~/contexts/AuthContext";
 
 const STEPS = [
   "License type",
@@ -95,8 +96,17 @@ function applicationToWizardState(app: Application, facilities: Facility[] | und
   };
 }
 
+const searchToLicenseType = (
+  type: string | undefined
+): LicenseType | null => {
+  if (type === "renewal") return "RENEWAL";
+  if (type === "variation" || type === "additional") return "ADDITIONAL_SERVICE";
+  return null;
+};
+
 export function ApplicationWizardPage() {
   const { id } = useParams({ strict: false });
+  const search = useSearch({ strict: false }) as { type?: string } | undefined;
   const [step, setStep] = useState(0);
   const [state, setState] = useState<WizardState>(initialWizardState);
   const [submitted, setSubmitted] = useState<{ id: string } | null>(null);
@@ -104,6 +114,7 @@ export function ApplicationWizardPage() {
   const { data: facilities } = useFacilities();
   const { data: application, isLoading: applicationLoading } = useApplication(id);
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   useEffect(() => {
     if (id && application && facilities !== undefined && initializedForId.current !== id) {
@@ -112,6 +123,13 @@ export function ApplicationWizardPage() {
     }
     if (!id) initializedForId.current = null;
   }, [id, application, facilities]);
+
+  useEffect(() => {
+    if (!id && search?.type && !initializedForId.current) {
+      const fromSearch = searchToLicenseType(search.type);
+      if (fromSearch) setState((s) => ({ ...s, licenseType: fromSearch }));
+    }
+  }, [id, search?.type]);
 
   const update = useCallback(<K extends keyof WizardState>(key: K, value: WizardState[K]) => {
     setState((s) => ({ ...s, [key]: value }));
@@ -161,7 +179,11 @@ export function ApplicationWizardPage() {
       queryClient.invalidateQueries({ queryKey: applicationQueryKey(id) });
       setSubmitted({ id });
     } else {
-      const created = submitApplication({ ...fullPayload, status: "Submitted" });
+      const created = submitApplication({
+        ...fullPayload,
+        status: "Submitted",
+        applicantUserId: user?.id,
+      });
       queryClient.invalidateQueries({ queryKey: applicationsQueryKey });
       setSubmitted({ id: created.id });
     }
