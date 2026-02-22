@@ -1,87 +1,65 @@
-# Welcome to React Router!
+# eLicensure — Facility License Demo App
 
-A modern, production-ready template for building full-stack React applications using React Router.
-
-[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/remix-run/react-router-templates/tree/main/default)
+A static web prototype for end-to-end facility licensing. It demonstrates screen structure, navigation, and form UX for **New**, **Renewal**, and **Additional service** license flows using mock data and role-based views.
 
 ## Features
 
-- 🚀 Server-side rendering
-- ⚡️ Hot Module Replacement (HMR)
-- 📦 Asset bundling and optimization
-- 🔄 Data loading and mutations
-- 🔒 TypeScript by default
-- 🎉 TailwindCSS for styling
-- 📖 [React Router docs](https://reactrouter.com/)
+- **Mock auth** — Log in by selecting a role (Applicant, Inspector, Team Leader, Admin).
+- **Role-based UI** — Dashboard, application list, and apply flows vary by role (e.g. applicants see only their applications; inspectors see assigned inspections).
+- **Application wizard** — Multi-step form for new applications; for Renewal/Variation/Additional service, start by selecting an existing application, then follow the type-specific flow (renewal request, full edit, or partial edit for additional service).
+- **Workflow** — Draft → Submitted → Assigned → Under Inspection → Inspection Submitted/Rejected → Approved or Rejected; team leader assigns inspectors and reviews inspections.
+- **In-app notifications** — Bell in header with notifications on status change, assign, inspection submit, approve/return.
+
+## Tech Stack
+
+- **React** 19, **TypeScript**
+- **Vite** 7 — build and dev server
+- **TanStack Router** — routing and layouts
+- **TanStack Query** — data fetching (mock API)
+- **Tailwind CSS** 4, **shadcn/ui** (Radix) — styling and components
+- **Recharts** — dashboard charts
 
 ## Getting Started
 
-### Installation
-
-Install the dependencies:
+### Install
 
 ```bash
-npm install
+pnpm install
 ```
 
 ### Development
 
-Start the development server with HMR:
+```bash
+pnpm run dev
+```
+
+App runs at `http://localhost:5173`. Use the login page to pick a role (no password).
+
+### Build & typecheck
 
 ```bash
-npm run dev
+pnpm run build
+pnpm run typecheck
 ```
 
-Your application will be available at `http://localhost:5173`.
-
-## Building for Production
-
-Create a production build:
+Preview production build:
 
 ```bash
-npm run build
+pnpm run preview
 ```
 
-## Deployment
+## Project Structure
 
-### Docker Deployment
+- `app/` — routes, pages, layouts, components, hooks, data (mock API, auth, notifications), types
+- `docs/` — [Application features and flows](docs/application-features-and-flows.md), PRD, and plans
+- `memory-bank/` — project context and progress notes for AI/development
 
-To build and run using Docker:
+## Documentation
 
-```bash
-docker build -t my-app .
+- **[Application features and flows](docs/application-features-and-flows.md)** — Roles, routes, wizard flows (New, Renewal, Variation, Additional service), and status workflow
+- **docs/eLicensure-Core-PRD.md** — Product requirements
+- **docs/plan-renewal-variation-additional-flows.md** — Plan for list → select and type-specific apply flows
 
-# Run the container
-docker run -p 3000:3000 my-app
-```
+## Mock Data
 
-The containerized application can be deployed to any platform that supports Docker, including:
-
-- AWS ECS
-- Google Cloud Run
-- Azure Container Apps
-- Digital Ocean App Platform
-- Fly.io
-- Railway
-
-### DIY Deployment
-
-If you're familiar with deploying Node applications, the built-in app server is production-ready.
-
-Make sure to deploy the output of `npm run build`
-
-```
-├── package.json
-├── package-lock.json (or pnpm-lock.yaml, or bun.lockb)
-├── build/
-│   ├── client/    # Static assets
-│   └── server/    # Server-side code
-```
-
-## Styling
-
-This template comes with [Tailwind CSS](https://tailwindcss.com/) already configured for a simple default starting experience. You can use whatever CSS framework you prefer.
-
----
-
-Built with ❤️ using React Router.
+All data is in-memory (no backend). Four users (Applicant, Inspector, Team Leader, Admin), 12 seed applications, and a small facility list. Session storage holds the current user; reload clears in-memory mutations but keeps the logged-in role.
