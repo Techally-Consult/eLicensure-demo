@@ -1,16 +1,30 @@
 import type {
   Application,
+  ApplicationDocument,
   ApplicationStatus,
   InspectionResult,
 } from "~/types/application";
 import type { Facility } from "~/types/facility";
 import type { UserRole } from "~/types/auth";
 import { addNotification } from "~/data/mockNotifications";
+import { DOCUMENT_TYPES } from "~/data/documentTypes";
 
 export type ListApplicationsOptions = { role?: UserRole; userId?: string };
 
 const APPLICANT_USER_ID = "user-applicant";
 const TEAM_LEADER_USER_ID = "user-tl";
+
+/** Test PDF URLs for mock documents (no real upload) */
+export const MOCK_ACKNOWLEDGEMENT_PDF_URL =
+  "https://www.w3.org/WAI/WCAG21/Techniques/pdf/example.pdf";
+export const MOCK_LICENSE_CERTIFICATE_PDF_URL =
+  "https://www.w3.org/WAI/WAI20/test-assets/PDFs/table.pdf";
+export const MOCK_APPLICANT_PDF_URL =
+  "https://www.w3.org/WAI/WCAG21/Techniques/pdf/example.pdf";
+
+function newDocId(): string {
+  return `doc-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
 
 /** In-memory store for demo. Mutations (e.g. submit) update this. */
 const applicationsStore: Application[] = [
@@ -597,6 +611,55 @@ const applicationsStore: Application[] = [
   },
 ];
 
+/** Add at least two facility-licensing applicant documents to each application (seed data). */
+function seedApplicantDocuments(): void {
+  const typesToUse = [
+    DOCUMENT_TYPES.find((t) => t.id === "facility-floor-plan")!,
+    DOCUMENT_TYPES.find((t) => t.id === "qualifications")!,
+  ];
+  for (const app of applicationsStore) {
+    const existing = app.documents ?? [];
+    const applicantDocs = existing.filter((d) => d.type === "applicant");
+    if (applicantDocs.length >= 2) continue;
+    const added: ApplicationDocument[] = [];
+    for (let i = 0; i < 2; i++) {
+      const docType = typesToUse[i];
+      added.push({
+        id: `doc-seed-${app.id}-${i + 1}`,
+        name: docType.name,
+        description: docType.description,
+        documentTypeId: docType.id,
+        type: "applicant",
+        url: MOCK_APPLICANT_PDF_URL,
+        uploadedAt: app.lastUpdated,
+        fileName: `seed_${docType.id}_${app.id}.pdf`,
+      });
+    }
+    app.documents = [...existing, ...added];
+  }
+}
+seedApplicantDocuments();
+
+/** Ensure every submitted application (status !== Draft) has an acknowledgement document. Run once at load. */
+function ensureAcknowledgementForSubmittedApplications(): void {
+  for (const app of applicationsStore) {
+    if (app.status === "Draft") continue;
+    const docs = app.documents ?? [];
+    if (docs.some((d) => d.type === "acknowledgement")) continue;
+    const acknowledgementDoc: ApplicationDocument = {
+      id: newDocId(),
+      name: "Acknowledgement letter",
+      type: "acknowledgement",
+      url: MOCK_ACKNOWLEDGEMENT_PDF_URL,
+      uploadedAt: app.lastUpdated,
+      fileName: "Acknowledgement_letter.pdf",
+      description: "Acknowledgement",
+    };
+    app.documents = [...docs, acknowledgementDoc];
+  }
+}
+ensureAcknowledgementForSubmittedApplications();
+
 const facilitiesStore: Facility[] = [
   {
     id: "fac-1",
@@ -658,11 +721,32 @@ export function submitApplication(application: ApplicationPayload): Application 
   const id = `APP-${String(applicationsStore.length + 1).padStart(3, "0")}`;
   const lastUpdated = new Date().toISOString();
   const status: ApplicationStatus = application.status ?? "Submitted";
+  const baseDocs = application.documents ?? [];
+  const acknowledgementDoc: ApplicationDocument | null =
+    status === "Submitted" &&
+    !baseDocs.some((d) => d.type === "acknowledgement")
+      ? {
+          id: newDocId(),
+          name: "Acknowledgement letter",
+          type: "acknowledgement",
+          url: MOCK_ACKNOWLEDGEMENT_PDF_URL,
+          uploadedAt: lastUpdated,
+          fileName: "Acknowledgement_letter.pdf",
+          description: "Acknowledgement",
+        }
+      : null;
+  const documents =
+    acknowledgementDoc !== null
+      ? [...baseDocs, acknowledgementDoc]
+      : baseDocs.length > 0
+        ? baseDocs
+        : undefined;
   const created: Application = {
     ...application,
     id,
     lastUpdated,
     status,
+    documents,
     timeline: [
       { date: lastUpdated, label: "Created" },
       { date: lastUpdated, label: "Submitted" },
@@ -702,10 +786,31 @@ export function updateApplicationStatus(
   if (index === -1) return null;
   const lastUpdated = new Date().toISOString();
   const existing = applicationsStore[index];
+  const existingDocs = existing.documents ?? [];
+  const hasAcknowledgement = existingDocs.some((d) => d.type === "acknowledgement");
+  const acknowledgementDoc: ApplicationDocument | null =
+    newStatus === "Submitted" && !hasAcknowledgement
+      ? {
+          id: newDocId(),
+          name: "Acknowledgement letter",
+          type: "acknowledgement",
+          url: MOCK_ACKNOWLEDGEMENT_PDF_URL,
+          uploadedAt: lastUpdated,
+          fileName: "Acknowledgement_letter.pdf",
+          description: "Acknowledgement",
+        }
+      : null;
+  const documents =
+    acknowledgementDoc !== null
+      ? [...existingDocs, acknowledgementDoc]
+      : existingDocs.length > 0
+        ? existingDocs
+        : undefined;
   const updated: Application = {
     ...existing,
     status: newStatus,
     lastUpdated,
+    ...(documents !== undefined && { documents }),
     ...(remark !== undefined && { remark }),
     timeline: [
       ...(existing.timeline ?? []),
@@ -792,18 +897,34 @@ export function submitInspection(
   return updated;
 }
 
-/** Team leader: approve license. Status → Approved. */
+/** Team leader: approve license. Status → Approved. Appends license certificate document. */
 export function approveLicense(id: string): Application | null {
   const app = applicationsStore.find((a) => a.id === id);
   const updated = updateApplicationStatus(id, "Approved");
-  if (updated) {
-    addNotification(APPLICANT_USER_ID, {
-      applicationId: id,
-      type: "approved",
-      message: `Application ${id} (${app?.facilityName ?? id}) has been approved.`,
+  if (!updated) return null;
+  const hasCertificate = (updated.documents ?? []).some(
+    (d) => d.type === "license_certificate"
+  );
+  if (!hasCertificate) {
+    const licenseDoc: ApplicationDocument = {
+      id: newDocId(),
+      name: "License certificate",
+      type: "license_certificate",
+      url: MOCK_LICENSE_CERTIFICATE_PDF_URL,
+      uploadedAt: updated.lastUpdated,
+      fileName: "License_certificate.pdf",
+      description: "License certificate",
+    };
+    updateApplication(id, {
+      documents: [...(updated.documents ?? []), licenseDoc],
     });
   }
-  return updated;
+  addNotification(APPLICANT_USER_ID, {
+    applicationId: id,
+    type: "approved",
+    message: `Application ${id} (${app?.facilityName ?? id}) has been approved.`,
+  });
+  return applicationsStore.find((a) => a.id === id) ?? updated;
 }
 
 /** Team leader: return to applicant with remark. Status → Rejected, sets remark. */

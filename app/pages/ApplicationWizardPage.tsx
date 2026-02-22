@@ -7,16 +7,18 @@ import { RadioGroup, RadioGroupItem } from "~/components/ui/radio-group";
 import { Label } from "~/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import type { LicenseType } from "~/types/application";
-import type { ApplicantInfo, FacilityInfo, ServiceItem } from "~/types/application";
+import type { ApplicantInfo, ApplicationDocument, FacilityInfo, ServiceItem } from "~/types/application";
 import type { Application } from "~/types/application";
 import type { Facility } from "~/types/facility";
 import { useFacilities } from "~/hooks/useFacilities";
 import { useApplication } from "~/hooks/useApplication";
 import { applicationQueryKey } from "~/hooks/useApplication";
-import { submitApplication, updateApplication } from "~/data/mockApi";
+import { MOCK_APPLICANT_PDF_URL, submitApplication, updateApplication } from "~/data/mockApi";
+import { DOCUMENT_TYPES } from "~/data/documentTypes";
 import { applicationsQueryKey, useApplications } from "~/hooks/useApplications";
 import { useAuth } from "~/contexts/AuthContext";
 import { StatusBadge } from "~/components/StatusBadge";
+import { Check } from "lucide-react";
 
 const STEPS = [
   "License type",
@@ -25,6 +27,7 @@ const STEPS = [
   "Services & capacity",
   "Staffing",
   "Infrastructure",
+  "Documents",
   "Type-specific",
   "Review & submit",
 ] as const;
@@ -41,6 +44,7 @@ type WizardState = {
   staffingHead: { name: string; qualification: string; licenseNumber: string };
   staffRows: { name: string; cadre: string; license: string }[];
   infrastructureDescription: string;
+  documents: ApplicationDocument[];
   typeSpecific: {
     new?: { startDate?: string; constructionStatus?: string; readyForInspection?: boolean };
     renewal?: { licenseNumber?: string; issueDate?: string; expiryDate?: string; changes?: string; lastInspection?: string; inspectionSummary?: string };
@@ -58,6 +62,7 @@ const initialWizardState: WizardState = {
   staffingHead: { name: "", qualification: "", licenseNumber: "" },
   staffRows: [],
   infrastructureDescription: "",
+  documents: [],
   typeSpecific: {},
 };
 
@@ -93,6 +98,7 @@ function applicationToWizardState(app: Application, facilities: Facility[] | und
     staffingHead: app.staffingHead ?? { name: "", qualification: "", licenseNumber: "" },
     staffRows: (app.staffRows ?? []).map((r) => ({ name: r.name, cadre: r.cadre, license: r.license })),
     infrastructureDescription: app.infrastructureDescription ?? "",
+    documents: app.documents ?? [],
     typeSpecific: app.typeSpecific ?? {},
   };
 }
@@ -165,8 +171,8 @@ export function ApplicationWizardPage() {
     true;
 
   const handleNext = () => {
-    if (step < 7 && (step !== 0 || state.licenseType) && (step !== 1 || state.applicant.name?.trim()) && (step !== 2 || (state.licenseType === "NEW" ? state.facilityNew.name : state.facilityId))) {
-      setStep((s) => Math.min(s + 1, 7));
+    if (step < 8 && (step !== 0 || state.licenseType) && (step !== 1 || state.applicant.name?.trim()) && (step !== 2 || (state.licenseType === "NEW" ? state.facilityNew.name : state.facilityId))) {
+      setStep((s) => Math.min(s + 1, 8));
     }
   };
 
@@ -187,6 +193,7 @@ export function ApplicationWizardPage() {
       staffingHead: state.staffingHead.name ? state.staffingHead : undefined,
       staffRows: state.staffRows.length > 0 ? state.staffRows : undefined,
       infrastructureDescription: state.infrastructureDescription || undefined,
+      documents: state.documents.length > 0 ? state.documents : undefined,
       typeSpecific: Object.keys(state.typeSpecific).length > 0 ? state.typeSpecific : undefined,
     };
     if (id) {
@@ -853,6 +860,70 @@ export function ApplicationWizardPage() {
           </TabsContent>
           <TabsContent value="6" className="mt-0">
             <CardHeader>
+              <CardTitle className="text-base">Documents</CardTitle>
+              <p className="text-xs text-muted-foreground">
+                Upload the required documents (mock: no real file). Each type can be uploaded once; use Re-upload to replace.
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {DOCUMENT_TYPES.map((docType) => {
+                  const existing = state.documents.find(
+                    (d) => d.type === "applicant" && d.documentTypeId === docType.id
+                  );
+                  const isUploaded = Boolean(existing);
+                  const handleUpload = () => {
+                    const now = new Date().toISOString();
+                    const fileName = `mock_${docType.id}_${Date.now()}.pdf`;
+                    const newDoc: ApplicationDocument = {
+                      id: `doc-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+                      name: docType.name,
+                      description: docType.description,
+                      documentTypeId: docType.id,
+                      type: "applicant",
+                      url: MOCK_APPLICANT_PDF_URL,
+                      uploadedAt: now,
+                      fileName,
+                    };
+                    const otherDocs = state.documents.filter(
+                      (d) => d.type !== "applicant" || d.documentTypeId !== docType.id
+                    );
+                    update("documents", [...otherDocs, newDoc]);
+                  };
+                  return (
+                    <div
+                      key={docType.id}
+                      className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border p-4"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-foreground">{docType.name}</p>
+                        <p className="text-sm text-muted-foreground">{docType.description}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {isUploaded ? (
+                          <>
+                            <span className="flex items-center gap-1.5 text-sm text-green-600 dark:text-green-400">
+                              <Check className="h-4 w-4" />
+                              Uploaded
+                            </span>
+                            <Button type="button" variant="secondary" size="sm" onClick={handleUpload}>
+                              Re-upload
+                            </Button>
+                          </>
+                        ) : (
+                          <Button type="button" size="sm" onClick={handleUpload}>
+                            Upload
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </TabsContent>
+          <TabsContent value="7" className="mt-0">
+            <CardHeader>
               <CardTitle className="text-base">Type-specific information</CardTitle>
             </CardHeader>
             <CardContent>
@@ -1053,7 +1124,7 @@ export function ApplicationWizardPage() {
           </div>
             </CardContent>
           </TabsContent>
-          <TabsContent value="7" className="mt-0">
+          <TabsContent value="8" className="mt-0">
             <CardHeader>
               <CardTitle className="text-base">Review & Submit</CardTitle>
             </CardHeader>
@@ -1086,6 +1157,12 @@ export function ApplicationWizardPage() {
                 <h3 className="font-medium text-gray-700 dark:text-gray-300">Infrastructure</h3>
                 <p className="text-gray-600 dark:text-gray-400">{state.infrastructureDescription || "—"}</p>
               </section>
+              <section>
+                <h3 className="font-medium text-gray-700 dark:text-gray-300">Documents</h3>
+                <p className="text-gray-600 dark:text-gray-400">
+                  {state.documents.length ? `${state.documents.length} document(s) attached` : "None"}
+                </p>
+              </section>
             </div>
           </div>
             </CardContent>
@@ -1099,7 +1176,7 @@ export function ApplicationWizardPage() {
           >
             Back
           </Button>
-          {step < 7 ? (
+          {step < 8 ? (
             <Button type="button" onClick={handleNext} disabled={!canNext}>
               Next
             </Button>

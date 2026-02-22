@@ -18,8 +18,10 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 import type { ApplicationStatus, TimelineEvent } from "~/types/application";
+import { Eye, Download } from "lucide-react";
+import type { ApplicationDocument } from "~/types/application";
 
-type DetailTab = "summary" | "form" | "timeline";
+type DetailTab = "summary" | "form" | "timeline" | "documents";
 
 const STATUS_OPTIONS: ApplicationStatus[] = [
   "Draft",
@@ -32,6 +34,22 @@ const STATUS_OPTIONS: ApplicationStatus[] = [
   "Approved",
   "Rejected",
 ];
+
+function sortDocuments(docs: ApplicationDocument[]): ApplicationDocument[] {
+  const applicant = docs.filter((d) => d.type === "applicant");
+  const acknowledgement = docs.filter((d) => d.type === "acknowledgement");
+  const license = docs.filter((d) => d.type === "license_certificate");
+  return [...applicant, ...acknowledgement, ...license];
+}
+
+function formatDocDate(iso: string): string {
+  try {
+    const d = new Date(iso);
+    return d.toLocaleDateString(undefined, { dateStyle: "short" });
+  } catch {
+    return iso;
+  }
+}
 
 export function ApplicationDetailPage() {
   const { id } = useParams({ strict: false });
@@ -116,10 +134,11 @@ export function ApplicationDetailPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as DetailTab)}>
-        <TabsList className="grid w-full max-w-md grid-cols-3">
+        <TabsList className="grid w-full max-w-lg grid-cols-4">
           <TabsTrigger value="summary">Summary</TabsTrigger>
           <TabsTrigger value="form">Form</TabsTrigger>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
+          <TabsTrigger value="documents">Documents</TabsTrigger>
         </TabsList>
         <Card className="mt-4">
           <TabsContent value="summary" className="mt-0">
@@ -507,6 +526,71 @@ export function ApplicationDetailPage() {
             </CardHeader>
             <CardContent className="pt-0">
               <Timeline events={timelineEvents} />
+            </CardContent>
+          </TabsContent>
+          <TabsContent value="documents" className="mt-0">
+            <CardHeader>
+              <CardTitle className="text-base">Documents</CardTitle>
+              <p className="text-xs text-muted-foreground">
+                Applicant uploads and generated letters (acknowledgement, license certificate)
+              </p>
+            </CardHeader>
+            <CardContent className="pt-0">
+              {!application.documents || application.documents.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No documents.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse text-sm">
+                    <thead>
+                      <tr className="border-b border-border">
+                        <th className="text-left py-2 pr-4 font-medium text-muted-foreground">No.</th>
+                        <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Attachment</th>
+                        <th className="text-left py-2 pr-4 font-medium text-muted-foreground">File name</th>
+                        <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Uploaded</th>
+                        <th className="text-left py-2 font-medium text-muted-foreground">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sortDocuments(application.documents).map((doc, index) => (
+                        <tr key={doc.id} className="border-b border-border">
+                          <td className="py-3 pr-4 text-muted-foreground">{index + 1}</td>
+                          <td className="py-3 pr-4">
+                            <span className="font-medium text-foreground">{doc.name}</span>
+                            {doc.description && (
+                              <span className="block text-xs text-muted-foreground">{doc.description}</span>
+                            )}
+                          </td>
+                          <td className="py-3 pr-4 text-muted-foreground">{doc.fileName ?? doc.name}</td>
+                          <td className="py-3 pr-4 text-muted-foreground">
+                            {formatDocDate(doc.uploadedAt)}
+                          </td>
+                          <td className="py-3">
+                            <div className="flex items-center gap-1">
+                              <a
+                                href={doc.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex h-8 w-8 items-center justify-center rounded border border-border text-muted-foreground hover:bg-muted hover:text-teal-600 dark:hover:text-teal-400"
+                                title="Preview"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </a>
+                              <a
+                                href={doc.url}
+                                download={(doc.fileName ?? doc.name).replace(/\s+/g, "_")}
+                                className="inline-flex h-8 w-8 items-center justify-center rounded border border-border text-muted-foreground hover:bg-muted hover:text-teal-600 dark:hover:text-teal-400"
+                                title="Download"
+                              >
+                                <Download className="h-4 w-4" />
+                              </a>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </CardContent>
           </TabsContent>
         </Card>

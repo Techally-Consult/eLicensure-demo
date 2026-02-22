@@ -110,6 +110,27 @@ export interface TypeSpecific {
   additional?: TypeSpecificAdditional;
 }
 
+/** Document attached to an application (mock: url points to test PDF) */
+export type ApplicationDocumentType =
+  | "applicant"
+  | "acknowledgement"
+  | "license_certificate";
+
+export interface ApplicationDocument {
+  id: string;
+  name: string;
+  type: ApplicationDocumentType;
+  url: string;
+  uploadedAt: string; // ISO
+  uploadedBy?: string;
+  /** Which predefined type (applicant uploads only); used for one-doc-per-type and table display */
+  documentTypeId?: string;
+  /** Short description for table column (applicant + system docs) */
+  description?: string;
+  /** Display file name for table (e.g. "20260205_094627.PDF") */
+  fileName?: string;
+}
+
 /** Application as stored and returned by mock API */
 export interface Application {
   id: string;
@@ -137,4 +158,6 @@ export interface Application {
   applicantUserId?: string;
   /** For RENEWAL applications: id of the application being renewed (source license) */
   sourceApplicationId?: string;
+  /** Applicant uploads + generated acknowledgement and license certificate (mock: test PDF URLs) */
+  documents?: ApplicationDocument[];
 }
