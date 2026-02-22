@@ -135,4 +135,6 @@ export interface Application {
   remark?: string;
   /** Applicant user id (owner of the application); used to filter "my applications" for Applicant role */
   applicantUserId?: string;
+  /** For RENEWAL applications: id of the application being renewed (source license) */
+  sourceApplicationId?: string;
 }

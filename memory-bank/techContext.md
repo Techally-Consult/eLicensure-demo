@@ -10,7 +10,7 @@
 
 - **Router:** TanStack Router (`@tanstack/react-router`) – migrated from React Router 7.
 - **Auth (mock):** React context (AuthProvider in main.tsx); `app/contexts/AuthContext.tsx`; `app/data/mockAuth.ts` (4 users, sessionStorage); no real auth.
-- **Data:** TanStack Query; mock API in `app/data/mockApi.ts` (listApplications(role, userId) for role-filtered list, get + mutations; mutations emit in-app notifications). Notifications: `app/data/mockNotifications.ts` (store, addNotification, getNotifications, markRead, subscribe); `app/hooks/useNotifications.ts`. Optional seed: seedNotifications() for demo notifications per role.
+- **Data:** TanStack Query; mock API in `app/data/mockApi.ts` (listApplications(role, userId) for role-filtered list, get + mutations; mutations emit in-app notifications). Apply wizard: renewal/variation/additional use application list → select then type-specific flow (renewal creates new app with sourceApplicationId; additional uses ?mode=additionalService for partial edit). Notifications: `app/data/mockNotifications.ts` (store, addNotification, getNotifications, markRead, subscribe); `app/hooks/useNotifications.ts`. Optional seed: seedNotifications() for demo notifications per role.
 - **UI:** Tailwind CSS 4; shadcn in `app/components/ui/` (button, input, label, textarea, select, checkbox, radio-group, tabs, card); Radix + CVA.
 - **React:** 19.x.
 - **Build:** Vite 7, TypeScript 5.9.

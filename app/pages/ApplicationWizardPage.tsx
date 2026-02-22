@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { Link, useParams, useSearch } from "@tanstack/react-router";
+import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "~/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
@@ -14,8 +14,9 @@ import { useFacilities } from "~/hooks/useFacilities";
 import { useApplication } from "~/hooks/useApplication";
 import { applicationQueryKey } from "~/hooks/useApplication";
 import { submitApplication, updateApplication } from "~/data/mockApi";
-import { applicationsQueryKey } from "~/hooks/useApplications";
+import { applicationsQueryKey, useApplications } from "~/hooks/useApplications";
 import { useAuth } from "~/contexts/AuthContext";
+import { StatusBadge } from "~/components/StatusBadge";
 
 const STEPS = [
   "License type",
@@ -104,17 +105,32 @@ const searchToLicenseType = (
   return null;
 };
 
+const APPLY_TYPES = ["renewal", "variation", "additional"] as const;
+type ApplyType = (typeof APPLY_TYPES)[number];
+
+function isApplyType(t: string | undefined): t is ApplyType {
+  return t === "renewal" || t === "variation" || t === "additional";
+}
+
 export function ApplicationWizardPage() {
   const { id } = useParams({ strict: false });
-  const search = useSearch({ strict: false }) as { type?: string } | undefined;
+  const search = useSearch({ strict: false }) as { type?: string; mode?: string } | undefined;
+  const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [state, setState] = useState<WizardState>(initialWizardState);
   const [submitted, setSubmitted] = useState<{ id: string } | null>(null);
+  const [selectedApplicationId, setSelectedApplicationId] = useState<string | null>(null);
   const initializedForId = useRef<string | null>(null);
   const { data: facilities } = useFacilities();
-  const { data: application, isLoading: applicationLoading } = useApplication(id);
+  const { data: applications } = useApplications();
+  const { data: application, isLoading: applicationLoading } = useApplication(id ?? selectedApplicationId ?? undefined);
   const queryClient = useQueryClient();
   const { user } = useAuth();
+
+  const applyType = search?.type;
+  const isListMode = !id && isApplyType(applyType);
+  const isRenewalDetailMode = isListMode && applyType === "renewal" && selectedApplicationId != null;
+  const isAdditionalServiceMode = Boolean(id && search?.mode === "additionalService");
 
   useEffect(() => {
     if (id && application && facilities !== undefined && initializedForId.current !== id) {
@@ -225,10 +241,194 @@ export function ApplicationWizardPage() {
     );
   }
 
+  // --- Application list (renewal / variation / additional): select an application first
+  if (isListMode && !isRenewalDetailMode) {
+    const listApplications: Application[] =
+      applyType === "renewal"
+        ? (applications ?? []).filter((a: Application) => a.status === "Approved")
+        : applications ?? [];
+    const listTitle =
+      applyType === "renewal"
+        ? "Select an application to renew"
+        : applyType === "variation"
+          ? "Select an application to vary (edit)"
+          : "Select an application to add a service to";
+
+    const handleSelect = (appId: string) => {
+      if (applyType === "renewal") {
+        setSelectedApplicationId(appId);
+      } else if (applyType === "variation") {
+        navigate({ to: "/apply/$id", params: { id: appId } });
+      } else {
+        navigate({ to: "/apply/$id", params: { id: appId }, search: { mode: "additionalService" } });
+      }
+    };
+
+    return (
+      <div className="mx-auto max-w-2xl space-y-6">
+        <h1 className="text-2xl font-semibold text-foreground">{listTitle}</h1>
+        <p className="text-sm text-muted-foreground">
+          {applyType === "renewal"
+            ? "Only approved applications are shown. Select one to request a license renewal."
+            : "Select an application from the list to continue."}
+        </p>
+        {listApplications.length === 0 ? (
+          <Card>
+            <CardContent className="py-8 text-center text-muted-foreground">
+              {applyType === "renewal"
+                ? "No approved applications to renew."
+                : "No applications to select."}
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardContent className="pt-0">
+              <ul className="divide-y divide-border">
+                {listApplications.map((app: Application) => (
+                  <li
+                    key={app.id}
+                    className="flex items-center justify-between py-3"
+                  >
+                    <div>
+                      <span className="font-medium text-foreground">
+                        {app.facilityName}
+                      </span>
+                      <span className="ml-2 text-sm text-muted-foreground">
+                        {app.id}
+                      </span>
+                      <StatusBadge status={app.status} />
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => handleSelect(app.id)}
+                    >
+                      Select
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        )}
+        <Button variant="outline" asChild>
+          <Link to="/applications">Back to applications</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  // --- Renewal: show selected application detail + "Request renewal"
+  if (isRenewalDetailMode) {
+    if (applicationLoading || !application) {
+      return (
+        <div className="mx-auto max-w-2xl space-y-6">
+          <h1 className="text-2xl font-semibold text-foreground">Request renewal</h1>
+          <p className="text-muted-foreground">Loading application…</p>
+        </div>
+      );
+    }
+    const handleRequestRenewal = () => {
+      const facilityNameVal = application.facilityName || "Unnamed facility";
+      const renewalPayload = {
+        licenseType: "RENEWAL" as const,
+        facilityName: facilityNameVal,
+        applicantUserId: user?.id,
+        sourceApplicationId: application.id,
+        applicant: application.applicant,
+        facility: application.facility,
+        facilityId: application.facilityId,
+        services: application.services,
+        totalBeds: application.totalBeds,
+        staffingHead: application.staffingHead,
+        staffRows: application.staffRows,
+        infrastructureDescription: application.infrastructureDescription,
+        typeSpecific: {
+          renewal: {
+            ...application.typeSpecific?.renewal,
+            licenseNumber: application.facility?.licenseNumber ?? application.typeSpecific?.renewal?.licenseNumber,
+            issueDate: application.typeSpecific?.renewal?.issueDate,
+            expiryDate: application.typeSpecific?.renewal?.expiryDate,
+            changes: application.typeSpecific?.renewal?.changes,
+            lastInspection: application.typeSpecific?.renewal?.lastInspection,
+            inspectionSummary: application.typeSpecific?.renewal?.inspectionSummary,
+          },
+        },
+        status: "Draft" as const,
+      };
+      const created = submitApplication({
+        ...renewalPayload,
+        status: "Draft",
+        applicantUserId: user?.id,
+      });
+      queryClient.invalidateQueries({ queryKey: applicationsQueryKey });
+      navigate({ to: "/apply/$id", params: { id: created.id } });
+    };
+
+    return (
+      <div className="mx-auto max-w-2xl space-y-6">
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={() => setSelectedApplicationId(null)}>
+            ← Back to list
+          </Button>
+        </div>
+        <h1 className="text-2xl font-semibold text-foreground">Request renewal</h1>
+        <p className="text-sm text-muted-foreground">
+          Review the application below and request a license renewal. You will be taken to the new application to confirm and submit.
+        </p>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Application summary</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <dl className="grid gap-x-4 gap-y-1 text-sm sm:grid-cols-2">
+              <div>
+                <dt className="text-muted-foreground">Facility</dt>
+                <dd className="font-medium">{application.facilityName}</dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">Application ID</dt>
+                <dd className="font-medium">{application.id}</dd>
+              </div>
+              {application.applicant?.name && (
+                <div>
+                  <dt className="text-muted-foreground">Applicant</dt>
+                  <dd className="font-medium">{application.applicant.name}</dd>
+                </div>
+              )}
+              {application.services && application.services.length > 0 && (
+                <div className="sm:col-span-2">
+                  <dt className="text-muted-foreground">Services</dt>
+                  <dd className="font-medium">
+                    {application.services
+                      .map(
+                        (s) =>
+                          `${s.name}${s.level ? ` (${s.level})` : ""}${s.bedCapacity != null ? `, ${s.bedCapacity} beds` : ""}`
+                      )
+                      .join("; ")}
+                  </dd>
+                </div>
+              )}
+            </dl>
+          </CardContent>
+        </Card>
+        <div className="flex gap-3">
+          <Button onClick={handleRequestRenewal}>Request renewal</Button>
+          <Button variant="outline" asChild>
+            <Link to="/applications">Cancel</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <h1 className="text-2xl font-semibold text-foreground">
-        {id ? `Edit application ${id}` : "New Application"}
+        {isAdditionalServiceMode
+          ? `Additional service — ${id}`
+          : id
+            ? `Edit application ${id}`
+            : "New Application"}
       </h1>
       <Tabs
         value={String(step)}
@@ -254,8 +454,9 @@ export function ApplicationWizardPage() {
             <CardContent>
               <RadioGroup
                 value={state.licenseType ?? ""}
-                onValueChange={(v) => update("licenseType", v as LicenseType)}
+                onValueChange={(v) => !isAdditionalServiceMode && update("licenseType", v as LicenseType)}
                 className="grid gap-3"
+                disabled={isAdditionalServiceMode}
               >
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="NEW" id="license-new" />
@@ -282,6 +483,9 @@ export function ApplicationWizardPage() {
           <TabsContent value="1" className="mt-0">
             <CardHeader>
               <CardTitle className="text-base">Applicant Information</CardTitle>
+              {isAdditionalServiceMode && (
+                <p className="text-xs text-muted-foreground">Read-only for additional service</p>
+              )}
             </CardHeader>
             <CardContent>
           <div className="space-y-4">
@@ -292,7 +496,8 @@ export function ApplicationWizardPage() {
                   type="text"
                   value={state.applicant.name ?? ""}
                   onChange={(e) => update("applicant", { ...state.applicant, name: e.target.value })}
-                  className="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                  disabled={isAdditionalServiceMode}
+                  className="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-800 dark:text-white disabled:opacity-60 disabled:cursor-not-allowed"
                 />
               </div>
               <div>
@@ -301,7 +506,8 @@ export function ApplicationWizardPage() {
                   type="text"
                   value={state.applicant.idType ?? ""}
                   onChange={(e) => update("applicant", { ...state.applicant, idType: e.target.value })}
-                  className="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                  disabled={isAdditionalServiceMode}
+                  className="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-800 dark:text-white disabled:opacity-60 disabled:cursor-not-allowed"
                 />
               </div>
               <div>
@@ -310,7 +516,8 @@ export function ApplicationWizardPage() {
                   type="text"
                   value={state.applicant.idNumber ?? ""}
                   onChange={(e) => update("applicant", { ...state.applicant, idNumber: e.target.value })}
-                  className="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                  disabled={isAdditionalServiceMode}
+                  className="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-800 dark:text-white disabled:opacity-60 disabled:cursor-not-allowed"
                 />
               </div>
               <div>
@@ -319,7 +526,8 @@ export function ApplicationWizardPage() {
                   type="text"
                   value={state.applicant.phone ?? ""}
                   onChange={(e) => update("applicant", { ...state.applicant, phone: e.target.value })}
-                  className="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                  disabled={isAdditionalServiceMode}
+                  className="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-800 dark:text-white disabled:opacity-60 disabled:cursor-not-allowed"
                 />
               </div>
               <div>
@@ -328,7 +536,8 @@ export function ApplicationWizardPage() {
                   type="email"
                   value={state.applicant.email ?? ""}
                   onChange={(e) => update("applicant", { ...state.applicant, email: e.target.value })}
-                  className="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                  disabled={isAdditionalServiceMode}
+                  className="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-800 dark:text-white disabled:opacity-60 disabled:cursor-not-allowed"
                 />
               </div>
               <div className="sm:col-span-2">
@@ -336,7 +545,8 @@ export function ApplicationWizardPage() {
                 <select
                   value={state.applicant.role ?? ""}
                   onChange={(e) => update("applicant", { ...state.applicant, role: (e.target.value || undefined) as "owner" | "representative" | undefined })}
-                  className="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                  disabled={isAdditionalServiceMode}
+                  className="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-800 dark:text-white disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   <option value="">Select</option>
                   <option value="owner">Owner</option>
@@ -350,7 +560,8 @@ export function ApplicationWizardPage() {
                     type="text"
                     value={state.applicant.authLetterRef ?? ""}
                     onChange={(e) => update("applicant", { ...state.applicant, authLetterRef: e.target.value })}
-                    className="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                    disabled={isAdditionalServiceMode}
+                    className="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-800 dark:text-white disabled:opacity-60 disabled:cursor-not-allowed"
                   />
                 </div>
               )}
@@ -361,6 +572,9 @@ export function ApplicationWizardPage() {
           <TabsContent value="2" className="mt-0">
             <CardHeader>
               <CardTitle className="text-base">Facility Information</CardTitle>
+              {isAdditionalServiceMode && (
+                <p className="text-xs text-muted-foreground">Read-only for additional service</p>
+              )}
             </CardHeader>
             <CardContent>
           <div className="space-y-4">
@@ -372,7 +586,8 @@ export function ApplicationWizardPage() {
                     type="text"
                     value={state.facilityNew.name ?? ""}
                     onChange={(e) => update("facilityNew", { ...state.facilityNew, name: e.target.value })}
-                    className="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                    disabled={isAdditionalServiceMode}
+                    className="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-800 dark:text-white disabled:opacity-60 disabled:cursor-not-allowed"
                   />
                 </div>
                 <div>
@@ -381,7 +596,8 @@ export function ApplicationWizardPage() {
                     type="text"
                     value={state.facilityNew.type ?? ""}
                     onChange={(e) => update("facilityNew", { ...state.facilityNew, type: e.target.value })}
-                    className="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                    disabled={isAdditionalServiceMode}
+                    className="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-800 dark:text-white disabled:opacity-60 disabled:cursor-not-allowed"
                   />
                 </div>
                 <div>
@@ -390,7 +606,8 @@ export function ApplicationWizardPage() {
                     type="text"
                     value={state.facilityNew.ownershipType ?? ""}
                     onChange={(e) => update("facilityNew", { ...state.facilityNew, ownershipType: e.target.value })}
-                    className="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                    disabled={isAdditionalServiceMode}
+                    className="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-800 dark:text-white disabled:opacity-60 disabled:cursor-not-allowed"
                   />
                 </div>
                 <div>
@@ -399,7 +616,8 @@ export function ApplicationWizardPage() {
                     type="text"
                     value={state.facilityNew.region ?? ""}
                     onChange={(e) => update("facilityNew", { ...state.facilityNew, region: e.target.value })}
-                    className="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                    disabled={isAdditionalServiceMode}
+                    className="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-800 dark:text-white disabled:opacity-60 disabled:cursor-not-allowed"
                   />
                 </div>
                 <div>
@@ -408,7 +626,8 @@ export function ApplicationWizardPage() {
                     type="text"
                     value={state.facilityNew.woreda ?? ""}
                     onChange={(e) => update("facilityNew", { ...state.facilityNew, woreda: e.target.value })}
-                    className="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                    disabled={isAdditionalServiceMode}
+                    className="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-800 dark:text-white disabled:opacity-60 disabled:cursor-not-allowed"
                   />
                 </div>
               </div>
@@ -418,7 +637,8 @@ export function ApplicationWizardPage() {
                 <select
                   value={state.facilityId}
                   onChange={(e) => update("facilityId", e.target.value)}
-                  className="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                  disabled={isAdditionalServiceMode}
+                  className="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-800 dark:text-white disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   <option value="">Select facility</option>
                   {facilities?.map((f) => (
@@ -511,6 +731,9 @@ export function ApplicationWizardPage() {
           <TabsContent value="4" className="mt-0">
             <CardHeader>
               <CardTitle className="text-base">Staffing</CardTitle>
+              {isAdditionalServiceMode && (
+                <p className="text-xs text-muted-foreground">Facility head read-only; you can add or edit staff rows for the new service.</p>
+              )}
             </CardHeader>
             <CardContent>
           <div className="space-y-4">
@@ -521,7 +744,8 @@ export function ApplicationWizardPage() {
                   type="text"
                   value={state.staffingHead.name}
                   onChange={(e) => update("staffingHead", { ...state.staffingHead, name: e.target.value })}
-                  className="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                  disabled={isAdditionalServiceMode}
+                  className="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-800 dark:text-white disabled:opacity-60 disabled:cursor-not-allowed"
                 />
               </div>
               <div>
@@ -530,7 +754,8 @@ export function ApplicationWizardPage() {
                   type="text"
                   value={state.staffingHead.qualification}
                   onChange={(e) => update("staffingHead", { ...state.staffingHead, qualification: e.target.value })}
-                  className="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                  disabled={isAdditionalServiceMode}
+                  className="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-800 dark:text-white disabled:opacity-60 disabled:cursor-not-allowed"
                 />
               </div>
               <div>
@@ -539,7 +764,8 @@ export function ApplicationWizardPage() {
                   type="text"
                   value={state.staffingHead.licenseNumber}
                   onChange={(e) => update("staffingHead", { ...state.staffingHead, licenseNumber: e.target.value })}
-                  className="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                  disabled={isAdditionalServiceMode}
+                  className="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-800 dark:text-white disabled:opacity-60 disabled:cursor-not-allowed"
                 />
               </div>
             </div>
@@ -600,6 +826,9 @@ export function ApplicationWizardPage() {
           <TabsContent value="5" className="mt-0">
             <CardHeader>
               <CardTitle className="text-base">Infrastructure</CardTitle>
+              {isAdditionalServiceMode && (
+                <p className="text-xs text-muted-foreground">Read-only for additional service</p>
+              )}
             </CardHeader>
             <CardContent>
           <div className="space-y-4">
@@ -609,7 +838,8 @@ export function ApplicationWizardPage() {
                 value={state.infrastructureDescription}
                 onChange={(e) => update("infrastructureDescription", e.target.value)}
                 rows={4}
-                className="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                disabled={isAdditionalServiceMode}
+                className="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-800 dark:text-white disabled:opacity-60 disabled:cursor-not-allowed"
               />
             </div>
             <div>
